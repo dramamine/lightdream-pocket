@@ -8,13 +8,17 @@ This code is the basis for the other examples. By default, it expects the Teensy
 
 The use case here is, you have a more complex setup (with Resolume, etc.) but you want some sort of fallback pattern to play when Artnet is down.
 
-## ld-artnet-video2sdcard
+## artnet-to-sd-card
 
-@TODO
+Python code to convert Resolume + Lightjams recordings to SD card format (for the programs below)
 
-## ld-video2sdcard
+## ld-artnet-videosdcard
 
-@TODO
+While receiving Artnet data, display that data. Otherwise, play recorded DMX off of the SD card.
+
+## ld-videosdcard
+
+Play recorded DMX off of the SD card.
 
 ## ld-artnet-fastled
 

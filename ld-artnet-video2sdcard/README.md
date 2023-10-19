@@ -1,4 +1,22 @@
-## ld-framework
+## ld-artnet-videosdcard.ino
+
+Based on:
+
+https://github.com/PaulStoffregen/OctoWS2811/blob/master/examples/VideoSDcard/VideoSDcard.ino
+
+Updated this code to match some different formatting of the recorded DMX file; see https://github.com/dramamine/lightdream-pocket/tree/main/artnet-to-sd-card for more info
+
+---
+
+## How To Use
+
+Upload this source file to your Teensy. You can do this using [Teensyduino](https://www.pjrc.com/teensy/teensyduino.html).
+
+You can check the Serial monitor once your script is running to confirm you don't see any error messages. A common error you might see is "unable to read header"; this can happen if there's a mismatch between your stated data size (LED_WIDTH * LED_HEIGHT) and the data size actually present in `output.bin`.
+
+--- 
+
+## Configuring For Your Setup
 
 In the main sketch, set a couple variables for your setup:
 
