@@ -52,7 +52,12 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 #include <SPI.h>
 #include <OctoWS2811.h>
 #include "TeensyID.h"
-#include "Pattern.h"
+
+// i.e. LEDs per output. 
+#define LED_WIDTH 170
+
+// i.e. how many strips; Octo board supports 8 channels out
+#define LED_HEIGHT 1
 
 // if true, program expects to be plugged into a network switch. If it's not,
 // it will get stuck at `setup()::artnet.begin()`.
@@ -60,14 +65,8 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 // If you see "Link status (should be 2)" 
 bool useNetwork = true;
 
-// how many strips? Octo board supports 8 data channels out
-const byte numStrips = 1;        // change for your setup
-
-// how many universes per strip? (universes * 170 LEDs per universe)
-const int universesPerStrip = 1;
-
 // make sure the config above is correct for your setup. we expect the controlling 
-// software  to send (numStrips * universesPerStrip) universes to this IP.
+// software  to send (LED_HEIGHT * universesPerStrip) universes to this IP.
 const int ledsPerUniverse = 170;
 
 // Send fps timing to Serial out, should be around 40 fps
@@ -78,65 +77,123 @@ bool showFps = false;
 // LD algorithm Q3-2023 was running 15-17us for 8-universe code
 bool showTiming = false;
 
+// ~~ end config ~~
 
-const int ledsPerStrip = ledsPerUniverse * universesPerStrip;
-const int maxUniverses = numStrips * universesPerStrip;
+// how many universes per strip?
+const int universesPerStrip = ceil(LED_WIDTH / 170.0);
 
-const int numLeds = ledsPerStrip * numStrips;
-DMAMEM int displayMemory[ledsPerStrip * 6];
-int drawingMemory[ledsPerStrip * 6];
+const int maxUniverses = LED_HEIGHT * universesPerStrip;
+
+const int numLeds = LED_WIDTH * LED_HEIGHT;
+DMAMEM int displayMemory[LED_WIDTH * 6];
+int drawingMemory[LED_WIDTH * 6];
 const int config = WS2811_GRB | WS2811_800kHz;
-OctoWS2811 leds(ledsPerStrip, displayMemory, drawingMemory, config);
+OctoWS2811 leds(LED_WIDTH, displayMemory, drawingMemory, config);
 
 // Artnet settings
 Artnet artnet;
-// CHANGE FOR YOUR SETUP most software this is 1, some software send out artnet first universe as 0.
-const int startUniverse = 0; 
 
-// have we received data for each universe?
-bool universesReceived[maxUniverses];
+namespace Pattern {
+    
+  const int fps = 11;
+  const int BRIGHTNESS = 50;
+  int ticks = 0;
 
-// for calculating data received rates
-int universesReceivedTotal[maxUniverses];
-bool sendFrame = 1;
+  long hues[256];
 
+  long setLedColorHSV(byte h, byte s, byte v)
+  {
+    byte RedLight;
+    byte GreenLight;
+    byte BlueLight;
+    // this is the algorithm to convert from RGB to HSV
+    h = (h * 192) / 256;           // 0..191
+    unsigned int i = h / 32;       // We want a value of 0 thru 5
+    unsigned int f = (h % 32) * 8; // 'fractional' part of 'i' 0..248 in jumps
 
+    unsigned int sInv = 255 - s; // 0 -> 0xff, 0xff -> 0
+    unsigned int fInv = 255 - f; // 0 -> 0xff, 0xff -> 0
+    byte pv = v * sInv / 256;    // pv will be in range 0 - 255
+    byte qv = v * (256 - s * f / 256) / 256;
+    byte tv = v * (256 - s * fInv / 256) / 256;
 
+    switch (i)
+    {
+    case 0:
+      RedLight = v;
+      GreenLight = tv;
+      BlueLight = pv;
+      break;
+    case 1:
+      RedLight = qv;
+      GreenLight = v;
+      BlueLight = pv;
+      break;
+    case 2:
+      RedLight = pv;
+      GreenLight = v;
+      BlueLight = tv;
+      break;
+    case 3:
+      RedLight = pv;
+      GreenLight = qv;
+      BlueLight = v;
+      break;
+    case 4:
+      RedLight = tv;
+      GreenLight = pv;
+      BlueLight = v;
+      break;
+    case 5:
+      RedLight = v;
+      GreenLight = pv;
+      BlueLight = qv;
+      break;
+    }
+    long rgb = 0;
 
-// class for pattern code. this runs all the time when useNetwork is false and
-// sometimes when useNetwork is true but the network isn't broadcasting.
-Pattern pattern(&leds);
-
-// call setPixel using frame data.
-void updateLeds(int uni)
-{
-  if (universesReceived[uni] > 0)
-    return;
-  universesReceived[uni] = 1;
-
-  if (uni >= maxUniverses) {
-    Serial.printf("WARN:   Got a universe of data that we weren't expecting. %d\n", uni);
-    return;
+    rgb += RedLight << 16;
+    rgb += GreenLight << 8;
+    rgb += BlueLight;
+    return rgb;
   }
 
-  int length = artnet.getLength();
-  uint8_t *frame = artnet.getDmxFrame();
-  universesReceivedTotal[uni] = universesReceivedTotal[uni] + 1;
-
-  // copy data from Artnet frame to LED buffer
-  for (int i = 0; i < length / 3; i++)
+  void rainbowSetup()
   {
-
-    int led = i + uni * ledsPerUniverse;
-
-    if (led < numLeds)
+    for (int i = 0; i < 256; i++)
     {
-      leds.setPixel(led, frame[i * 3], frame[i * 3 + 1], frame[i * 3 + 2]);
+      hues[i] = setLedColorHSV(i, 255, BRIGHTNESS);
     }
+  }
+
+  void setup() {
+    rainbowSetup();
+  }
+
+  void loop()
+  {
+    
+    leds.setPixel(1,hues[((140+ticks) % 255)]);
+    leds.setPixel(2,hues[((170+ticks) % 255)]);
+    leds.setPixel(3,hues[((200+ticks) % 255)]);
+    leds.setPixel(4,hues[((230+ticks) % 255)]);
+    leds.show();
+    ticks++;
+    delay((int)1000/fps);
   }
 }
 
 namespace Networking {
+  // CHANGE FOR YOUR SETUP most software this is 1, some software send out artnet first universe as 0.
+  const int startUniverse = 0; 
+
+  // have we received data for each universe?
+  bool universesReceived[maxUniverses];
+
+  // for calculating data received rates
+  int universesReceivedTotal[maxUniverses];
+  bool sendFrame = 1;
+
   // true once we have received an Artnet packet
   bool hasReceivedArtnetPacket = false;
 
@@ -180,6 +237,35 @@ namespace Networking {
       }
     }
   }
+
+  // call setPixel using frame data.
+  void updateLeds(int uni)
+  {
+    if (universesReceived[uni] > 0)
+      return;
+    universesReceived[uni] = 1;
+
+    if (uni >= maxUniverses) {
+      Serial.printf("WARN:   Got a universe of data that we weren't expecting. %d\n", uni);
+      return;
+    }
+
+    int length = artnet.getLength();
+    uint8_t *frame = artnet.getDmxFrame();
+    universesReceivedTotal[uni] = universesReceivedTotal[uni] + 1;
+
+    // copy data from Artnet frame to LED buffer
+    for (int i = 0; i < length / 3; i++)
+    {
+
+      int led = i + uni * ledsPerUniverse;
+
+      if (led < numLeds)
+      {
+        leds.setPixel(led, frame[i * 3], frame[i * 3 + 1], frame[i * 3 + 2]);
+      }
+    }
+  }  
 
   // https://www.arduino.cc/reference/en/libraries/ethernet/
   void setup()
@@ -320,7 +406,7 @@ void setup()
     Networking::setup();
   }
 
-  pattern.setup();
+  Pattern::setup();
 }
 
 
@@ -334,6 +420,6 @@ void loop()
 
   if (!Networking::hasReceivedArtnetPacket)
   {
-    pattern.loop();
+    Pattern::loop();
   }
 }
