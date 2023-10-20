@@ -54,7 +54,7 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 #include "TeensyID.h"
 
 // i.e. LEDs per output. 
-#define LED_WIDTH 170
+#define LED_WIDTH 510
 
 // i.e. how many strips; Octo board supports 8 channels out
 #define LED_HEIGHT 1
@@ -92,6 +92,42 @@ OctoWS2811 leds(LED_WIDTH, displayMemory, drawingMemory, config);
 
 // Artnet settings
 Artnet artnet;
+
+byte timeOffset = 0;
+
+byte ledsPerLayer[] = {
+  72,
+  66,
+  60,
+  54,
+  48,
+  45,
+  39,
+  33,
+  27,
+  21,
+  15,
+  12,
+  6
+};
+
+byte blanksPerLayer[] = {
+  5,
+  7,
+  5,
+  6,
+  6,
+  4,
+  5,
+  6,
+  5,
+  5,
+  6,
+  5,
+  5
+};
+
+uint8_t layers = 13;
 
 namespace Pattern {
     
@@ -216,9 +252,9 @@ namespace Networking {
     teensySN(serial);
     Serial.printf("INFO:   Serial number: %02X-%02X-%02X-%02X \n", serial[0], serial[1], serial[2], serial[3]);
 
-    byte hardcoded_addresses[5] = {32, 33, 34, 35, 36};
-    uint8_t serials[5] = {
-        //0xDA, // 00-10-16-DA orange
+    byte hardcoded_addresses[6] = {31, 32, 33, 34, 35, 36};
+    uint8_t serials[6] = {
+        0xFE, // 00-10-16-DA orange
         0x9D, // LED Door 
         // 0xFE, // replacing this for prototyping
         0x5E, // 00-0C-46-5E yellow
@@ -227,7 +263,7 @@ namespace Networking {
         0x70, // 00-0C-46-70 purple
     };
     
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 6; i++)
     {
       if (serials[i] == serial[3])
       {
@@ -238,30 +274,76 @@ namespace Networking {
     }
   }
 
-  // call setPixel using frame data.
-  void updateLeds(int uni)
-  {
-    if (uni >= maxUniverses) {
-      Serial.printf("WARN:   Got a universe of data that we weren't expecting. %d\n", uni);
+  int accumulateBlanks(int count) {
+    int total = 0;
+    for (int i=count; i>= 0; i--) {
+      total += blanksPerLayer[i];
+    }
+    return total;
+  }
+// call setPixel using frame data.
+  void updateLeds(int uni) {
+    if (uni != 0) {
       return;
     }
-
-    int length = artnet.getLength();
+    // Serial.println("Hello from updateLeds");
     uint8_t *frame = artnet.getDmxFrame();
-    
+        
 
-    // copy data from Artnet frame to LED buffer
-    for (int i = 0; i < length / 3; i++)
-    {
+    int ledIdx = uni * ledsPerUniverse;
+    int startingLayer;
+    int startingPos = 0;
 
-      int led = i + uni * ledsPerUniverse;
+    int uniOffset = uni % 3;
+    // Serial.printf("looking at universe: %d (%d)\n", uni, uniOffset);
 
-      if (led < numLeds)
-      {
-        leds.setPixel(led, frame[i * 3], frame[i * 3 + 1], frame[i * 3 + 2]);
-      }
+    if (uniOffset == 0) {
+      startingLayer = 0;
+  
+
+      // @TODO pos not implemented
+      startingPos = 0;
+    } else if (uniOffset == 1) {
+      Serial.printf("blanks: %d\n", accumulateBlanks(1));
+      ledIdx = uni * ledsPerUniverse + accumulateBlanks(1);
+      startingLayer = 2;
+      startingPos = 33;      
+    } else if (uniOffset == 2) {
+      ledIdx = uni * ledsPerUniverse +  accumulateBlanks(4);
+      startingLayer = 4;
+      startingPos = 40; // ?           
     }
-  }  
+
+    int frameIdx = 0;
+    
+    // iterate through each layer
+    for (uint8_t i=startingLayer; i<layers && frameIdx<=510; i++) {
+
+      // iterate through each color in this layer
+      for (uint8_t j=startingPos; j<ledsPerLayer[i] && frameIdx<=510; j++) {
+        // Serial.printf("led idx: %d\n", ledIdx);
+        // set pixel
+        leds.setPixel(
+          ledIdx, 
+          frame[frameIdx],
+          frame[frameIdx+1],
+          frame[frameIdx+2]
+        );
+        frameIdx = frameIdx + 3;
+        ledIdx = ledIdx + 1;
+        // after using this once, reset it to 0
+        startingPos = 0;
+      }
+      
+      // add blanks
+      for (uint8_t j=0; j<blanksPerLayer[i]; j++) {
+        leds.setPixel(ledIdx, 0,0,0);
+        ledIdx++;
+      }
+      
+    }
+    // Serial.println("Goodbye from updateLeds");
+  }
 
   // https://www.arduino.cc/reference/en/libraries/ethernet/
   void setup()
@@ -304,9 +386,10 @@ namespace Networking {
   // print fps and how many frames we've received from each universe. this
   // prints incrementally (every 100 frames, when universe 0 is received)
   void printFps() {
+    
     int uni = artnet.getUniverse();
-    if (uni == 0 && universesReceivedTotal[0] % 100 == 0) {
 
+    if (uni == 0 && universesReceivedTotal[0] % 100 == 0) {
       // check timing, do fps
       uint32_t currentTiming = millis();
       if (_frameMs > 0)
@@ -332,6 +415,7 @@ namespace Networking {
 
   void handleDmxFrame()
   {
+    // Serial.println("Hello from handleDmxFrame");
     int uni = artnet.getUniverse();
 
     if (uni >= maxUniverses) {
@@ -357,11 +441,13 @@ namespace Networking {
     }
 
     // if we've received data for each universe, call leds.show()
+    
     sendFrame = 1;
     for (int i = 0; i < maxUniverses; i++)
     {
       if (universesReceived[i] == 0)
       {
+        // Serial.printf("sendFrame is 0 on universe: %d (of %d)\n", i, maxUniverses);
         sendFrame = 0;
         break;
       }
@@ -369,9 +455,11 @@ namespace Networking {
 
     if (sendFrame)
     {
+      // Serial.println("calling leds.show()");
       leds.show();
       memset(universesReceived, 0, maxUniverses);
     }
+    // Serial.println("Goodbye from handleDmxFrame");
   }
   void loop() {
     if (useNetwork) {
