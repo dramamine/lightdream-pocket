@@ -54,7 +54,7 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 #include "TeensyID.h"
 
 // i.e. LEDs per output. 
-#define LED_WIDTH 510
+#define LED_WIDTH 600
 
 // i.e. how many strips; Octo board supports 8 channels out
 #define LED_HEIGHT 1
@@ -281,69 +281,75 @@ namespace Networking {
     }
     return total;
   }
-// call setPixel using frame data.
-  void updateLeds(int uni) {
-    if (uni != 0) {
-      return;
+
+  int accumulateLeds(int count) {
+    int total = 0;
+    for (int i=count; i>= 0; i--) {
+      total += ledsPerLayer[i];
     }
-    // Serial.println("Hello from updateLeds");
+    return total;
+  }
+void updateLedsSimple(int uni) {
     uint8_t *frame = artnet.getDmxFrame();
         
 
+    int ledIdx = uni * ledsPerUniverse;
+
+    
+    for (int i=0; i<170; i++) {
+      leds.setPixel(
+        ledIdx+i, 
+        frame[3*i],
+        frame[3*i+1],
+        frame[3*i+2]
+      );
+    }
+  }
+  void updateLedLayer(int len, int ledIdx, int frameIdx) {
+    uint8_t *frame = artnet.getDmxFrame();
+    for (int i=0; i<len; i++) {
+      leds.setPixel(
+        ledIdx+i, 
+        frame[frameIdx + 3*i],
+        frame[frameIdx + 3*i+1],
+        frame[frameIdx + 3*i+2]        
+      );     
+    }    
+  }
+  
+  void updateLeds(int uni) {
+    // if (uni != 2) {
+    //   return;
+    // }
+    uint8_t *frame = artnet.getDmxFrame();
+        
     int ledIdx = uni * ledsPerUniverse;
     int startingLayer;
     int startingPos = 0;
 
     int uniOffset = uni % 3;
-    // Serial.printf("looking at universe: %d (%d)\n", uni, uniOffset);
 
     if (uniOffset == 0) {
-      startingLayer = 0;
-  
-
-      // @TODO pos not implemented
-      startingPos = 0;
+      updateLedLayer( ledsPerLayer[0], ledIdx, 0 );
+      updateLedLayer( ledsPerLayer[1], ledIdx+accumulateLeds(0)+accumulateBlanks(0), 217-1 );
+      updateLedLayer( ledsPerLayer[10], ledIdx+accumulateLeds(9)+accumulateBlanks(9) + 10, 415-1 );
+      updateLedLayer( ledsPerLayer[11], ledIdx+accumulateLeds(10)+accumulateBlanks(10) + 10, 460-1 );
+      
     } else if (uniOffset == 1) {
-      Serial.printf("blanks: %d\n", accumulateBlanks(1));
-      ledIdx = uni * ledsPerUniverse + accumulateBlanks(1);
-      startingLayer = 2;
-      startingPos = 33;      
+      // @TODO 
+      updateLedLayer( ledsPerLayer[2], accumulateLeds(1) + accumulateBlanks(1), 0 );
+      updateLedLayer( ledsPerLayer[3], accumulateLeds(2) + accumulateBlanks(2), 693-512-1 );
+      updateLedLayer( ledsPerLayer[4], accumulateLeds(3) + accumulateBlanks(3) + 2, 855-512-1 );
+      updateLedLayer( ledsPerLayer[12], accumulateLeds(11) + accumulateBlanks(11) + 13 , 999-512-1 );
     } else if (uniOffset == 2) {
-      ledIdx = uni * ledsPerUniverse +  accumulateBlanks(4);
-      startingLayer = 4;
-      startingPos = 40; // ?           
+      updateLedLayer( ledsPerLayer[5], accumulateLeds(4) + accumulateBlanks(4) + 3, 0 );
+      updateLedLayer( ledsPerLayer[6], accumulateLeds(5) + accumulateBlanks(5) + 3, 1160 - 512*2 - 1 );
+      updateLedLayer( ledsPerLayer[7], accumulateLeds(6) + accumulateBlanks(6) + 3, 1277 - 512*2 - 1 );
+      updateLedLayer( ledsPerLayer[8], accumulateLeds(7) + accumulateBlanks(7) + 5, 1376 - 512*2 - 1 );
+      updateLedLayer( ledsPerLayer[9], accumulateLeds(8) + accumulateBlanks(8) + 7, 1457 - 512*2 - 1 );
     }
-
-    int frameIdx = 0;
-    
-    // iterate through each layer
-    for (uint8_t i=startingLayer; i<layers && frameIdx<=510; i++) {
-
-      // iterate through each color in this layer
-      for (uint8_t j=startingPos; j<ledsPerLayer[i] && frameIdx<=510; j++) {
-        // Serial.printf("led idx: %d\n", ledIdx);
-        // set pixel
-        leds.setPixel(
-          ledIdx, 
-          frame[frameIdx],
-          frame[frameIdx+1],
-          frame[frameIdx+2]
-        );
-        frameIdx = frameIdx + 3;
-        ledIdx = ledIdx + 1;
-        // after using this once, reset it to 0
-        startingPos = 0;
-      }
-      
-      // add blanks
-      for (uint8_t j=0; j<blanksPerLayer[i]; j++) {
-        leds.setPixel(ledIdx, 0,0,0);
-        ledIdx++;
-      }
-      
-    }
-    // Serial.println("Goodbye from updateLeds");
   }
+
 
   // https://www.arduino.cc/reference/en/libraries/ethernet/
   void setup()
@@ -415,7 +421,6 @@ namespace Networking {
 
   void handleDmxFrame()
   {
-    // Serial.println("Hello from handleDmxFrame");
     int uni = artnet.getUniverse();
 
     if (uni >= maxUniverses) {
@@ -455,11 +460,9 @@ namespace Networking {
 
     if (sendFrame)
     {
-      // Serial.println("calling leds.show()");
       leds.show();
       memset(universesReceived, 0, maxUniverses);
     }
-    // Serial.println("Goodbye from handleDmxFrame");
   }
   void loop() {
     if (useNetwork) {
