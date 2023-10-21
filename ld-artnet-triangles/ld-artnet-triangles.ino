@@ -57,7 +57,7 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 #define LED_WIDTH 600
 
 // i.e. how many strips; Octo board supports 8 channels out
-#define LED_HEIGHT 1
+#define LED_HEIGHT 5
 
 // if true, program expects to be plugged into a network switch. If it's not,
 // it will get stuck at `setup()::artnet.begin()`.
@@ -70,7 +70,7 @@ bool useNetwork = true;
 const int ledsPerUniverse = 170;
 
 // Send fps timing to Serial out, should be around 40 fps
-bool showFps = false;
+bool showFps = true;
 
 // how long is our update look taking to render?
 // for reference: runs about 12us for regular, 32-universe code
@@ -80,7 +80,7 @@ bool showTiming = false;
 // ~~ end config ~~
 
 // how many universes per strip?
-const int universesPerStrip = ceil(LED_WIDTH / 170.0);
+const int universesPerStrip = 3;
 
 const int maxUniverses = LED_HEIGHT * universesPerStrip;
 
@@ -130,98 +130,28 @@ byte blanksPerLayer[] = {
 uint8_t layers = 13;
 
 namespace Pattern {
-    
-  const int fps = 11;
-  const int BRIGHTNESS = 50;
-  int ticks = 0;
-
-  long hues[256];
-
-  long setLedColorHSV(byte h, byte s, byte v)
-  {
-    byte RedLight;
-    byte GreenLight;
-    byte BlueLight;
-    // this is the algorithm to convert from RGB to HSV
-    h = (h * 192) / 256;           // 0..191
-    unsigned int i = h / 32;       // We want a value of 0 thru 5
-    unsigned int f = (h % 32) * 8; // 'fractional' part of 'i' 0..248 in jumps
-
-    unsigned int sInv = 255 - s; // 0 -> 0xff, 0xff -> 0
-    unsigned int fInv = 255 - f; // 0 -> 0xff, 0xff -> 0
-    byte pv = v * sInv / 256;    // pv will be in range 0 - 255
-    byte qv = v * (256 - s * f / 256) / 256;
-    byte tv = v * (256 - s * fInv / 256) / 256;
-
-    switch (i)
-    {
-    case 0:
-      RedLight = v;
-      GreenLight = tv;
-      BlueLight = pv;
-      break;
-    case 1:
-      RedLight = qv;
-      GreenLight = v;
-      BlueLight = pv;
-      break;
-    case 2:
-      RedLight = pv;
-      GreenLight = v;
-      BlueLight = tv;
-      break;
-    case 3:
-      RedLight = pv;
-      GreenLight = qv;
-      BlueLight = v;
-      break;
-    case 4:
-      RedLight = tv;
-      GreenLight = pv;
-      BlueLight = v;
-      break;
-    case 5:
-      RedLight = v;
-      GreenLight = pv;
-      BlueLight = qv;
-      break;
-    }
-    long rgb = 0;
-
-    rgb += RedLight << 16;
-    rgb += GreenLight << 8;
-    rgb += BlueLight;
-    return rgb;
-  }
-
-  void rainbowSetup()
-  {
-    for (int i = 0; i < 256; i++)
-    {
-      hues[i] = setLedColorHSV(i, 255, BRIGHTNESS);
-    }
-  }
-
   void setup() {
-    rainbowSetup();
   }
 
   void loop()
   {
-    
-    leds.setPixel(1,hues[((140+ticks) % 255)]);
-    leds.setPixel(2,hues[((170+ticks) % 255)]);
-    leds.setPixel(3,hues[((200+ticks) % 255)]);
-    leds.setPixel(4,hues[((230+ticks) % 255)]);
-    leds.show();
-    ticks++;
-    delay((int)1000/fps);
   }
 }
 
 namespace Networking {
-  // CHANGE FOR YOUR SETUP most software this is 1, some software send out artnet first universe as 0.
-  const int startUniverse = 0; 
+  // Teensy serial to IP address
+  int _mac_to_ip_pairs[6][2] = {
+    {0xFE, 32}, // 00-10-16-DA orange
+    {0x9D, 32}, // LED door
+    {0x5E, 33}, // 00-0C-46-5E yellow
+    {0x5D, 34}, // 00-0C-46-5D green - motherbrain
+    {0x92, 35}, // 00-0C-46-92 blue
+    {0x70, 36}, // 00-0C-46-70 purple
+  };  
+
+  // Change ip for your setup, last octet is changed in updateIp()
+  byte _ip[] = {169, 254, 18, 0};
+  byte _fakemac[] = {0x04, 0xE9, 0xE5, 0x00, 0x69, 0xEC};
 
   // have we received data for each universe?
   bool universesReceived[maxUniverses];
@@ -233,9 +163,7 @@ namespace Networking {
   // true once we have received an Artnet packet
   bool hasReceivedArtnetPacket = false;
 
-  // Change ip for your setup, last octet is changed in updateIp()
-  byte _ip[] = {169, 254, 18, 0};
-  byte _fakemac[] = {0x04, 0xE9, 0xE5, 0x00, 0x69, 0xEC};
+
 
 
   // frame time in ms, using millis()
@@ -252,25 +180,13 @@ namespace Networking {
     teensySN(serial);
     Serial.printf("INFO:   Serial number: %02X-%02X-%02X-%02X \n", serial[0], serial[1], serial[2], serial[3]);
 
-    byte hardcoded_addresses[6] = {31, 32, 33, 34, 35, 36};
-    uint8_t serials[6] = {
-        0xFE, // 00-10-16-DA orange
-        0x9D, // LED Door 
-        // 0xFE, // replacing this for prototyping
-        0x5E, // 00-0C-46-5E yellow
-        0x5D, // 00-0C-46-5D green - motherbrain
-        0x92, // 00-0C-46-92 blue
-        0x70, // 00-0C-46-70 purple
-    };
-    
-    for (int i = 0; i < 6; i++)
-    {
-      if (serials[i] == serial[3])
-      {
-        Serial.println("INFO:  Used serial to figure out which brain I am.");
-        _ip[3] = hardcoded_addresses[i];
-        _fakemac[5] = hardcoded_addresses[i];
-      }
+    for (int i=0; i<6; i++) {
+      
+      if (_mac_to_ip_pairs[i][0] == serial[3]) {
+        Serial.println("INFO:   Used serial to figure out which brain I am.");
+        _fakemac[5] = _mac_to_ip_pairs[i][0];
+        _ip[3] = _mac_to_ip_pairs[i][1];
+      }      
     }
   }
 
@@ -289,24 +205,23 @@ namespace Networking {
     }
     return total;
   }
-void updateLedsSimple(int uni) {
-    uint8_t *frame = artnet.getDmxFrame();
+  // void updateLedsSimple(int uni) {
+  //   uint8_t *frame = artnet.getDmxFrame();
         
 
-    int ledIdx = uni * ledsPerUniverse;
+  //   int ledIdx = uni * ledsPerUniverse;
 
     
-    for (int i=0; i<170; i++) {
-      leds.setPixel(
-        ledIdx+i, 
-        frame[3*i],
-        frame[3*i+1],
-        frame[3*i+2]
-      );
-    }
-  }
-  void updateLedLayer(int len, int ledIdx, int frameIdx) {
-    uint8_t *frame = artnet.getDmxFrame();
+  //   for (int i=0; i<170; i++) {
+  //     leds.setPixel(
+  //       ledIdx+i, 
+  //       frame[3*i],
+  //       frame[3*i+1],
+  //       frame[3*i+2]
+  //     );
+  //   }
+  // }
+  void updateLedLayer(uint8_t *frame, int len, int ledIdx, int frameIdx) {
     for (int i=0; i<len; i++) {
       leds.setPixel(
         ledIdx+i, 
@@ -316,37 +231,44 @@ void updateLedsSimple(int uni) {
       );     
     }    
   }
+
+  void printFrame() {
+    uint8_t *frame = artnet.getDmxFrame();
+    for (int i=0; i<170; i++) {
+      Serial.printf("%d: %d %d %d. ", i, frame[3*i], frame[3*i+1], frame[3*i+2]);
+    }
+    Serial.println("");
+  }
   
   void updateLeds(int uni) {
-    // if (uni != 2) {
-    //   return;
-    // }
+    if (uni > 2) {
+      return;
+    }
     uint8_t *frame = artnet.getDmxFrame();
         
     int ledIdx = uni * ledsPerUniverse;
-    int startingLayer;
-    int startingPos = 0;
 
     int uniOffset = uni % 3;
 
     if (uniOffset == 0) {
-      updateLedLayer( ledsPerLayer[0], ledIdx, 0 );
-      updateLedLayer( ledsPerLayer[1], ledIdx+accumulateLeds(0)+accumulateBlanks(0), 217-1 );
-      updateLedLayer( ledsPerLayer[10], ledIdx+accumulateLeds(9)+accumulateBlanks(9) + 10, 415-1 );
-      updateLedLayer( ledsPerLayer[11], ledIdx+accumulateLeds(10)+accumulateBlanks(10) + 10, 460-1 );
+      updateLedLayer( frame, ledsPerLayer[0], ledIdx, 0 );
+      updateLedLayer( frame, ledsPerLayer[1], ledIdx+accumulateLeds(0)+accumulateBlanks(0), 217-1 );
+      updateLedLayer( frame, ledsPerLayer[10], ledIdx+accumulateLeds(9)+accumulateBlanks(9) + 10, 415-1 );
+      updateLedLayer( frame, ledsPerLayer[11], ledIdx+accumulateLeds(10)+accumulateBlanks(10) + 10, 460-1 );
       
     } else if (uniOffset == 1) {
       // @TODO 
-      updateLedLayer( ledsPerLayer[2], accumulateLeds(1) + accumulateBlanks(1), 0 );
-      updateLedLayer( ledsPerLayer[3], accumulateLeds(2) + accumulateBlanks(2), 693-512-1 );
-      updateLedLayer( ledsPerLayer[4], accumulateLeds(3) + accumulateBlanks(3) + 2, 855-512-1 );
-      updateLedLayer( ledsPerLayer[12], accumulateLeds(11) + accumulateBlanks(11) + 13 , 999-512-1 );
+      // printFrame();
+      updateLedLayer( frame, ledsPerLayer[2], accumulateLeds(1) + accumulateBlanks(1), 0 );
+      updateLedLayer( frame, ledsPerLayer[3], accumulateLeds(2) + accumulateBlanks(2), 693-512-1 );
+      updateLedLayer( frame, ledsPerLayer[4], accumulateLeds(3) + accumulateBlanks(3) + 2, 855-512-1 );
+      updateLedLayer( frame, ledsPerLayer[12], accumulateLeds(11) + accumulateBlanks(11) + 13 , 999-512-1 );
     } else if (uniOffset == 2) {
-      updateLedLayer( ledsPerLayer[5], accumulateLeds(4) + accumulateBlanks(4) + 3, 0 );
-      updateLedLayer( ledsPerLayer[6], accumulateLeds(5) + accumulateBlanks(5) + 3, 1160 - 512*2 - 1 );
-      updateLedLayer( ledsPerLayer[7], accumulateLeds(6) + accumulateBlanks(6) + 3, 1277 - 512*2 - 1 );
-      updateLedLayer( ledsPerLayer[8], accumulateLeds(7) + accumulateBlanks(7) + 5, 1376 - 512*2 - 1 );
-      updateLedLayer( ledsPerLayer[9], accumulateLeds(8) + accumulateBlanks(8) + 7, 1457 - 512*2 - 1 );
+      updateLedLayer( frame, ledsPerLayer[5], accumulateLeds(4) + accumulateBlanks(4) + 3, 0 );
+      updateLedLayer( frame, ledsPerLayer[6], accumulateLeds(5) + accumulateBlanks(5) + 3, 1160 - 512*2 - 1 );
+      updateLedLayer( frame, ledsPerLayer[7], accumulateLeds(6) + accumulateBlanks(6) + 3, 1277 - 512*2 - 1 );
+      updateLedLayer( frame, ledsPerLayer[8], accumulateLeds(7) + accumulateBlanks(7) + 5, 1376 - 512*2 - 1 );
+      updateLedLayer( frame, ledsPerLayer[9], accumulateLeds(8) + accumulateBlanks(8) + 7, 1457 - 512*2 - 1 );
     }
   }
 
@@ -460,6 +382,7 @@ void updateLedsSimple(int uni) {
 
     if (sendFrame)
     {
+      // Serial.println("calling leds.show()");
       leds.show();
       memset(universesReceived, 0, maxUniverses);
     }
