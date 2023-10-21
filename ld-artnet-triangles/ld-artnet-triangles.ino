@@ -132,16 +132,16 @@ uint8_t layers = 13;
 int layerDescription[13][5] = {
   {0, 1, 72, 5, 0},
   {0, 217, 66, 7, 0},
-  {1, 513, 60, 5, 0},
+  {1, 513, 60, 7, 0},
   {1, 693, 54, 6, 0},
-  {1, 855, 48, 6, 2},
-  {2, 1025, 45, 4, 3},
+  {1, 855, 48, 7, 2},
+  {2, 1025, 45, 6, 3},
   {2, 1160, 39, 5, 3},
   {2, 1277, 33, 6, 3},
-  {2, 1376, 27, 5, 5},
-  {2, 1457, 21, 5, 7},
-  {0, 415, 15, 6, 10},
-  {0, 460, 12, 5, 10},
+  {2, 1376, 27, 7, 5},
+  {2, 1457, 21, 7, 7},
+  {0, 415, 15, 7, 10},
+  {0, 460, 12, 6, 10},
   {1, 999, 6, 5, 13}
 };
 
@@ -265,11 +265,31 @@ namespace Networking {
       dmxPosition - uniOffset*512 - 1 
     );
   }
+
+  void _turnOnBlanksOnly(int uni) {
+    if (uni != 0) {
+      return;
+    }
+    int ledIdx = 0;
+
+    for (int i=0; i<layers; i++) {
+      int uni = layerDescription[i][0];
+      int ledsPerLayer = layerDescription[i][2];
+      int blanksPerLayer = layerDescription[i][3];
+      int adjustment = layerDescription[i][4];
+      ledIdx += ledsPerLayer;
+      for (int j=0; j<blanksPerLayer; j++) {
+        leds.setPixel(ledIdx, 100, 100, 100);
+        ledIdx++;
+      }
+    }    
+  }
   
   void updateLeds(int uni) {
     if (uni > 2) {
       return;
     }
+
     uint8_t *frame = artnet.getDmxFrame();
 
     int uniOffset = uni % 3;
