@@ -128,6 +128,22 @@ byte blanksPerLayer[] = {
 };
 
 uint8_t layers = 13;
+// [universe, DMX starting channel, leds per layer, blanks per layer, adjustment]
+int layerDescription[13][5] = {
+  {0, 1, 72, 5, 0},
+  {0, 217, 66, 7, 0},
+  {1, 513, 60, 5, 0},
+  {1, 693, 54, 6, 0},
+  {1, 855, 48, 6, 2},
+  {2, 1025, 45, 4, 3},
+  {2, 1160, 39, 5, 3},
+  {2, 1277, 33, 6, 3},
+  {2, 1376, 27, 5, 5},
+  {2, 1457, 21, 5, 7},
+  {0, 415, 15, 6, 10},
+  {0, 460, 12, 5, 10},
+  {1, 999, 6, 5, 13}
+};
 
 namespace Pattern {
   void setup() {
@@ -140,7 +156,7 @@ namespace Pattern {
 
 namespace Networking {
   // Teensy serial to IP address
-  int _mac_to_ip_pairs[6][2] = {
+  int _macToIpPairs[6][2] = {
     {0xFE, 31}, // 00-10-16-DA orange
     {0x9D, 32}, // LED door
     {0x5E, 33}, // 00-0C-46-5E yellow
@@ -182,10 +198,10 @@ namespace Networking {
 
     for (int i=0; i<6; i++) {
       
-      if (_mac_to_ip_pairs[i][0] == serial[3]) {
+      if (_macToIpPairs[i][0] == serial[3]) {
         Serial.println("INFO:   Used serial to figure out which brain I am.");
-        _fakemac[5] = _mac_to_ip_pairs[i][0];
-        _ip[3] = _mac_to_ip_pairs[i][1];
+        _fakemac[5] = _macToIpPairs[i][0];
+        _ip[3] = _macToIpPairs[i][1];
       }      
     }
   }
@@ -228,7 +244,7 @@ namespace Networking {
   //   }
   // }
 
-  void updateLedLayer(uint8_t *frame, int len, int ledIdx, int frameIdx) {
+  void _copyFrameToLeds(uint8_t *frame, int len, int ledIdx, int frameIdx) {
     for (int i=0; i<len; i++) {
       leds.setPixel(
         ledIdx+i, 
@@ -239,10 +255,15 @@ namespace Networking {
     }    
   }
 
-  void updateLayer(uint8_t *frame, int layer, int uni, int dmxPosition, int adjustment) {
+  void _updateLedRow(uint8_t *frame, int layer, int uni, int dmxPosition, int adjustment) {
     int uniOffset = uni % 3;
     int panelOffset = floor(uni / 3) * LED_WIDTH;    
-    return updateLayer( frame, ledsPerLayer[layer], panelOffset + countPreviousLeds(layer) + adjustment, dmxPosition - uniOffset*512 - 1 );
+    return _copyFrameToLeds( 
+      frame, 
+      layerDescription[layer][2], 
+      panelOffset + countPreviousLeds(layer) + adjustment, 
+      dmxPosition - uniOffset*512 - 1 
+    );
   }
   
   void updateLeds(int uni) {
@@ -253,22 +274,15 @@ namespace Networking {
 
     int uniOffset = uni % 3;
 
-    if (uniOffset == 0) {
-      updateLayer( frame, 0, uni, 1, 0 );
-      updateLayer( frame, 1, uni, 217, 0 );
-      updateLayer( frame, 10, uni, 415, 10 );
-      updateLayer( frame, 11, uni, 460, 10 );
-    } else if (uniOffset == 1) {
-      updateLayer( frame, 2, uni, 513, 0 );
-      updateLayer( frame, 3, uni, 693, 0 );
-      updateLayer( frame, 4, uni, 855, 2 );
-      updateLayer( frame, 12, uni, 999, 13 );
-    } else if (uniOffset == 2) {
-      updateLayer( frame, 5, uni, 1025, 3 );
-      updateLayer( frame, 6, uni, 1160, 3 );
-      updateLayer( frame, 7, uni, 1277, 3 );
-      updateLayer( frame, 8, uni, 1376, 5 );
-      updateLayer( frame, 9, uni, 1457, 7 );
+    for (int i=0; i<layers; i++) {
+      int uni = layerDescription[i][0];
+      if (uni != uniOffset) {
+        continue;
+      }
+
+      int dmxPosition = layerDescription[i][1];
+      int adjustment = layerDescription[i][4];
+      _updateLedRow(frame, i, uni, dmxPosition, adjustment);
     }
   }
 
