@@ -238,6 +238,12 @@ namespace Networking {
       );     
     }    
   }
+
+  void updateLayer(uint8_t *frame, int layer, int uni, int dmxPosition, int adjustment) {
+    int uniOffset = uni % 3;
+    int panelOffset = floor(uni / 3) * LED_WIDTH;    
+    return updateLayer( frame, ledsPerLayer[layer], panelOffset + countPreviousLeds(layer) + adjustment, dmxPosition - uniOffset*512 - 1 );
+  }
   
   void updateLeds(int uni) {
     if (uni > 2) {
@@ -246,26 +252,23 @@ namespace Networking {
     uint8_t *frame = artnet.getDmxFrame();
 
     int uniOffset = uni % 3;
-    int panelOffset = floor(uni / 3) * LED_WIDTH;
-
-    int ledIdx = uni * ledsPerUniverse;    
 
     if (uniOffset == 0) {
-      updateLedLayer( frame, ledsPerLayer[0], panelOffset, 0 );
-      updateLedLayer( frame, ledsPerLayer[1], panelOffset + countPreviousLeds(1), 217 - 1 );
-      updateLedLayer( frame, ledsPerLayer[10], panelOffset + countPreviousLeds(10) + 10, 415 - 1 );
-      updateLedLayer( frame, ledsPerLayer[11], panelOffset + countPreviousLeds(11) + 10, 460 - 1 );
+      updateLayer( frame, 0, uni, 1, 0 );
+      updateLayer( frame, 1, uni, 217, 0 );
+      updateLayer( frame, 10, uni, 415, 10 );
+      updateLayer( frame, 11, uni, 460, 10 );
     } else if (uniOffset == 1) {
-      updateLedLayer( frame, ledsPerLayer[2], panelOffset + countPreviousLeds(2), 0 );
-      updateLedLayer( frame, ledsPerLayer[3], panelOffset + countPreviousLeds(3), 693 - uniOffset*512 - 1 );
-      updateLedLayer( frame, ledsPerLayer[4], panelOffset + countPreviousLeds(4) + 2, 855 - uniOffset*512 - 1 );
-      updateLedLayer( frame, ledsPerLayer[12], panelOffset + countPreviousLeds(12) + 13 , 999 - uniOffset*512 - 1 );
+      updateLayer( frame, 2, uni, 513, 0 );
+      updateLayer( frame, 3, uni, 693, 0 );
+      updateLayer( frame, 4, uni, 855, 2 );
+      updateLayer( frame, 12, uni, 999, 13 );
     } else if (uniOffset == 2) {
-      updateLedLayer( frame, ledsPerLayer[5], panelOffset + countPreviousLeds(5) + 3, 0 );
-      updateLedLayer( frame, ledsPerLayer[6], panelOffset + countPreviousLeds(6) + 3, 1160 - uniOffset*512 - 1 );
-      updateLedLayer( frame, ledsPerLayer[7], panelOffset + countPreviousLeds(7) + 3, 1277 - uniOffset*512 - 1 );
-      updateLedLayer( frame, ledsPerLayer[8], panelOffset + countPreviousLeds(8) + 5, 1376 - uniOffset*512 - 1 );
-      updateLedLayer( frame, ledsPerLayer[9], panelOffset + countPreviousLeds(9) + 7, 1457 - uniOffset*512 - 1 );
+      updateLayer( frame, 5, uni, 1025, 3 );
+      updateLayer( frame, 6, uni, 1160, 3 );
+      updateLayer( frame, 7, uni, 1277, 3 );
+      updateLayer( frame, 8, uni, 1376, 5 );
+      updateLayer( frame, 9, uni, 1457, 7 );
     }
   }
 
