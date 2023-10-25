@@ -184,8 +184,19 @@ namespace Pattern {
 }
 
 namespace Networking {
-  // CHANGE FOR YOUR SETUP most software this is 1, some software send out artnet first universe as 0.
-  const int startUniverse = 0; 
+  // Teensy serial to IP address
+  int _macToIpPairs[6][2] = {
+    {0xFE, 31}, // 00-10-16-DA orange
+    {0x9D, 32}, // LED door
+    {0x5E, 33}, // 00-0C-46-5E yellow
+    {0x5D, 34}, // 00-0C-46-5D green - motherbrain
+    {0x92, 35}, // 00-0C-46-92 blue
+    {0x70, 36}, // 00-0C-46-70 purple
+  };  
+
+  // Change ip for your setup, last octet is changed in updateIp()
+  byte _ip[] = {169, 254, 18, 0};
+  byte _fakemac[] = {0x04, 0xE9, 0xE5, 0x00, 0x69, 0xEC};
 
   // have we received data for each universe?
   bool universesReceived[maxUniverses];
@@ -196,11 +207,6 @@ namespace Networking {
 
   // true once we have received an Artnet packet
   bool hasReceivedArtnetPacket = false;
-
-  // Change ip for your setup, last octet is changed in updateIp()
-  byte _ip[] = {169, 254, 18, 0};
-  byte _fakemac[] = {0x04, 0xE9, 0xE5, 0x00, 0x69, 0xEC};
-
 
   // frame time in ms, using millis()
   uint32_t _frameMs = 0;
@@ -216,25 +222,12 @@ namespace Networking {
     teensySN(serial);
     Serial.printf("INFO:   Serial number: %02X-%02X-%02X-%02X \n", serial[0], serial[1], serial[2], serial[3]);
 
-    byte hardcoded_addresses[5] = {32, 33, 34, 35, 36};
-    uint8_t serials[5] = {
-        //0xDA, // 00-10-16-DA orange
-        0x9D, // LED Door 
-        // 0xFE, // replacing this for prototyping
-        0x5E, // 00-0C-46-5E yellow
-        0x5D, // 00-0C-46-5D green - motherbrain
-        0x92, // 00-0C-46-92 blue
-        0x70, // 00-0C-46-70 purple
-    };
-    
-    for (int i = 0; i < 5; i++)
-    {
-      if (serials[i] == serial[3])
-      {
-        Serial.println("INFO:  Used serial to figure out which brain I am.");
-        _ip[3] = hardcoded_addresses[i];
-        _fakemac[5] = hardcoded_addresses[i];
-      }
+    for (int i=0; i<6; i++) {  
+      if (_macToIpPairs[i][0] == serial[3]) {
+        Serial.println("INFO:   Used serial to figure out which brain I am.");
+        _fakemac[5] = _macToIpPairs[i][0];
+        _ip[3] = _macToIpPairs[i][1];
+      }      
     }
   }
 

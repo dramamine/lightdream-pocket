@@ -197,7 +197,6 @@ namespace Networking {
     Serial.printf("INFO:   Serial number: %02X-%02X-%02X-%02X \n", serial[0], serial[1], serial[2], serial[3]);
 
     for (int i=0; i<6; i++) {
-      
       if (_macToIpPairs[i][0] == serial[3]) {
         Serial.println("INFO:   Used serial to figure out which brain I am.");
         _fakemac[5] = _macToIpPairs[i][0];
@@ -206,22 +205,8 @@ namespace Networking {
     }
   }
 
-  int accumulateBlanks(int count) {
-    int total = 0;
-    for (int i=count; i>= 0; i--) {
-      total += blanksPerLayer[i];
-    }
-    return total;
-  }
-
-  int accumulateLeds(int count) {
-    int total = 0;
-    for (int i=count; i>= 0; i--) {
-      total += ledsPerLayer[i];
-    }
-    return total;
-  }
-  int countPreviousLeds(int layer) {
+  // for a given layer, sum LEDs up to this layer
+  int _countPreviousLeds(int layer) {
     int total = 0;
     for (int i=layer-1; i>= 0; i--) {
       total += ledsPerLayer[i];
@@ -261,11 +246,12 @@ namespace Networking {
     return _copyFrameToLeds( 
       frame, 
       layerDescription[layer][2], 
-      panelOffset + countPreviousLeds(layer) + adjustment, 
+      panelOffset + _countPreviousLeds(layer) + adjustment, 
       dmxPosition - uniOffset*512 - 1 
     );
   }
 
+  // helper function for viewing the blanks (i.e. spaces between layers, i.e. the twisty bits)
   void _turnOnBlanksOnly(int uni) {
     if (uni != 0) {
       return;
@@ -286,9 +272,10 @@ namespace Networking {
   }
   
   void updateLeds(int uni) {
-    if (uni > 2) {
-      return;
-    }
+    // for limiting the number of universes we process
+    // if (uni > 2) {
+    //   return;
+    // }
 
     uint8_t *frame = artnet.getDmxFrame();
 
@@ -348,9 +335,7 @@ namespace Networking {
   // print fps and how many frames we've received from each universe. this
   // prints incrementally (every 100 frames, when universe 0 is received)
   void printFps() {
-    
     int uni = artnet.getUniverse();
-
     if (uni == 0 && universesReceivedTotal[0] % 100 == 0) {
       // check timing, do fps
       uint32_t currentTiming = millis();

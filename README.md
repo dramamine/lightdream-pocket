@@ -20,6 +20,10 @@ While receiving Artnet data, display that data. Otherwise, play recorded DMX off
 
 Play recorded DMX off of the SD card.
 
+## ld-artnet-triangles
+
+Code for running the triangle panels for [Super Lightdream](https://super-lightdream.metalheart.org/)
+
 ## ld-artnet-fastled
 
 @TODO
