@@ -82,7 +82,7 @@ const char* teensySN(void) {
 
 #if defined ARDUINO_TEENSY40 || defined ARDUINO_TEENSY41
 
-	void teensyMAC(uint8_t *mac) { // there are 2 MAC addresses each 48bit 
+	void teensyMAC(uint8_t *mac) { // there are 2 MAC addresses each 48bit
 		uint32_t m1 = HW_OCOTP_MAC1;
 		uint32_t m2 = HW_OCOTP_MAC0;
 		mac[0] = m1 >> 8;

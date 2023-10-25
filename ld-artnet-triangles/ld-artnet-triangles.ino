@@ -53,19 +53,19 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 #include <OctoWS2811.h>
 #include "TeensyID.h"
 
-// i.e. LEDs per output. 
+// i.e. LEDs per output.
 #define LED_WIDTH 600
 
 // i.e. how many strips; Octo board supports 8 channels out
-#define LED_HEIGHT 5
+#define LED_HEIGHT 8
 
 // if true, program expects to be plugged into a network switch. If it's not,
 // it will get stuck at `setup()::artnet.begin()`.
 // ## Troubleshooting the network
-// If you see "Link status (should be 2)" 
+// If you see "Link status (should be 2)"
 bool useNetwork = true;
 
-// make sure the config above is correct for your setup. we expect the controlling 
+// make sure the config above is correct for your setup. we expect the controlling
 // software  to send (LED_HEIGHT * universesPerStrip) universes to this IP.
 const int ledsPerUniverse = 170;
 
@@ -157,13 +157,13 @@ namespace Pattern {
 namespace Networking {
   // Teensy serial to IP address
   int _macToIpPairs[6][2] = {
-    {0xFE, 31}, // 00-10-16-DA orange
+    {0xFE, 32}, // 00-10-16-DA orange & general prototyping one
     {0x9D, 32}, // LED door
     {0x5E, 33}, // 00-0C-46-5E yellow
     {0x5D, 34}, // 00-0C-46-5D green - motherbrain
     {0x92, 35}, // 00-0C-46-92 blue
     {0x70, 36}, // 00-0C-46-70 purple
-  };  
+  };
 
   // Change ip for your setup, last octet is changed in updateIp()
   byte _ip[] = {169, 254, 18, 0};
@@ -185,14 +185,14 @@ namespace Networking {
   // frame time in ms, using millis()
   uint32_t _frameMs = 0;
 
-  // In this fn, we use teensySN() to generate a unique "serial number" for this 
+  // In this fn, we use teensySN() to generate a unique "serial number" for this
   // microcontroller. we use that with the `serials` chart to determine which IP
   // to use when joining the network.
   // update the `serials` array when you have new hardware.
   void updateIp()
   {
     // serial number of this Teensy
-    uint8_t serial[4];  
+    uint8_t serial[4];
     teensySN(serial);
     Serial.printf("INFO:   Serial number: %02X-%02X-%02X-%02X \n", serial[0], serial[1], serial[2], serial[3]);
 
@@ -201,7 +201,7 @@ namespace Networking {
         Serial.println("INFO:   Used serial to figure out which brain I am.");
         _fakemac[5] = _macToIpPairs[i][0];
         _ip[3] = _macToIpPairs[i][1];
-      }      
+      }
     }
   }
 
@@ -221,7 +221,7 @@ namespace Networking {
   //   int ledIdx = uni * ledsPerUniverse;
   //   for (int i=0; i<170; i++) {
   //     leds.setPixel(
-  //       ledIdx+i, 
+  //       ledIdx+i,
   //       frame[3*i],
   //       frame[3*i+1],
   //       frame[3*i+2]
@@ -232,22 +232,22 @@ namespace Networking {
   void _copyFrameToLeds(uint8_t *frame, int len, int ledIdx, int frameIdx) {
     for (int i=0; i<len; i++) {
       leds.setPixel(
-        ledIdx+i, 
+        ledIdx+i,
         frame[frameIdx + 3*i],
         frame[frameIdx + 3*i+1],
-        frame[frameIdx + 3*i+2]        
-      );     
-    }    
+        frame[frameIdx + 3*i+2]
+      );
+    }
   }
 
   void _updateLedRow(uint8_t *frame, int layer, int uni, int dmxPosition, int adjustment) {
     int uniOffset = uni % 3;
-    int panelOffset = floor(uni / 3) * LED_WIDTH;    
-    return _copyFrameToLeds( 
-      frame, 
-      layerDescription[layer][2], 
-      panelOffset + _countPreviousLeds(layer) + adjustment, 
-      dmxPosition - uniOffset*512 - 1 
+    int panelOffset = floor(uni / 3) * LED_WIDTH;
+    return _copyFrameToLeds(
+      frame,
+      layerDescription[layer][2],
+      panelOffset + _countPreviousLeds(layer) + adjustment,
+      dmxPosition - uniOffset*512 - 1
     );
   }
 
@@ -268,15 +268,10 @@ namespace Networking {
         leds.setPixel(ledIdx, 100, 100, 100);
         ledIdx++;
       }
-    }    
+    }
   }
-  
-  void updateLeds(int uni) {
-    // for limiting the number of universes we process
-    // if (uni > 2) {
-    //   return;
-    // }
 
+  void updateLeds(int uni) {
     uint8_t *frame = artnet.getDmxFrame();
 
     int uniOffset = uni % 3;
@@ -310,7 +305,7 @@ namespace Networking {
     }
     else if (Ethernet.hardwareStatus() == EthernetW5500) {
       Serial.println("INFO:   W5500 Ethernet controller detected.");
-    }    
+    }
 
     Serial.println("INFO:   Setting up Artnet via Ethernet cable...");
     Serial.printf("INFO:   Link status (should be 2): %d\n", Ethernet.linkStatus());
@@ -367,7 +362,7 @@ namespace Networking {
     if (uni >= maxUniverses) {
       return;
     }
-    
+
     // tracking
     universesReceived[uni] = 1;
     universesReceivedTotal[uni] = universesReceivedTotal[uni] + 1;
@@ -387,7 +382,7 @@ namespace Networking {
     }
 
     // if we've received data for each universe, call leds.show()
-    
+
     sendFrame = 1;
     for (int i = 0; i < maxUniverses; i++)
     {
@@ -415,10 +410,10 @@ namespace Networking {
         {
           Serial.println("STATUS: Receiving Artnet data.");
           Networking::hasReceivedArtnetPacket = true;
-        } 
+        }
 
-        Networking::handleDmxFrame();     
-      }    
+        Networking::handleDmxFrame();
+      }
     }
   }
 }

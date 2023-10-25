@@ -7,9 +7,9 @@ output_file_path  = "./output.bin"
 
 # make sure these match on the Teensy
 # i.e. LEDs per universe
-WIDTH = 340
+WIDTH = 170*3
 # i.e. number of outputs used by the Teensy
-HEIGHT = 4
+HEIGHT = 8
 FPS = 40.0
 
 def to_array(rows):
@@ -59,13 +59,13 @@ class SequencePlayer:
 
     if self.ended:
       return None
-      
+
     if not self.vid:
       print("need 2 play a video before reading frames")
       return None
 
     ret,frame = self.vid.read()
-    
+
     if ret:
       self.framecount += 1
 
@@ -88,9 +88,9 @@ class Video2SDCard:
     self.sp.play(sequencePath)
     print(self.sp.width)
     print(self.sp.height)
-  
+
   def write_header(self):
-    
+
     size = WIDTH * HEIGHT
     size_0 = size % 256
     size_1 = math.floor(size / 256)
@@ -112,7 +112,7 @@ class Video2SDCard:
       end = start + self.sp.rows_per_row
       rows = frame[start:end]
       row_array = to_array(rows)[0:WIDTH*3]
-      data = bytearray( row_array ) 
+      data = bytearray( row_array )
       self.output_file.write(data)
 
   def write_frames(self):
