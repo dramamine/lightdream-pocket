@@ -8,11 +8,15 @@ This code is mostly rearrangements of code & ideas from [PaulStoffregen](https:/
 - play back patterns written in code
 - LED mapping for my custom fixtures
 
+--- 
+
 ## ld-framework
 
 This code is the basis for the other examples. By default, it expects the Teensy to be connected to a network switch. While receiving Artnet data, it'll display that data. If it's not receiving Artnet data, it will play "demo" code (as written in Pattern.cpp).
 
 The use case here is, you have a more complex setup (with Resolume, etc.) but you want some sort of fallback pattern to play when Artnet is down.
+
+---
 
 ## artnet-to-sd-card
 
@@ -29,3 +33,4 @@ While receiving Artnet data, display that data. Otherwise, use the FastLED libra
 ## ld-artnet-videosdcard
 
 While receiving Artnet data, display that data. Otherwise, play recorded DMX off of the SD card.
+
