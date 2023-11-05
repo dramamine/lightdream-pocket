@@ -56,20 +56,20 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 #include <SD.h>
 #include <Wire.h>
 
-#define FILENAME     "output-340x4.bin"
-#define DELAY_WHEN_RELOADING_FILE  0
+#define FILENAME     "output.bin"
+#define DELAY_WHEN_RELOADING_FILE  1000
 
-// i.e. LEDs per output. 
-#define LED_WIDTH 340
+// i.e. LEDs per output.
+#define LED_WIDTH 510
 
 // i.e. how many strips; Octo board supports 8 channels out
-#define LED_HEIGHT 4
+#define LED_HEIGHT 8
 
 // if true, program expects to be plugged into a network switch. If it's not,
 // it will get stuck at `setup()::artnet.begin()`.
 // ## Troubleshooting the network
-// If you see "Link status (should be 2)" 
-bool useNetwork = true;
+// If you see "Link status (should be 2)"
+bool useNetwork = false;
 
 // how many strips? Octo board supports 8 data channels out
 // const byte LED_HEIGHT = 4;        // change for your setup
@@ -87,7 +87,7 @@ bool showTiming = false;
 // how many universes per strip?
 const int universesPerStrip = ceil(LED_WIDTH / 170.0);
 
-// make sure the config above is correct for your setup. we expect the controlling 
+// make sure the config above is correct for your setup. we expect the controlling
 // software  to send (LED_HEIGHT * universesPerStrip) universes to this IP.
 const int ledsPerUniverse = 170;
 
@@ -127,7 +127,7 @@ namespace Pattern {
       if (buflen == 0) {
         n = videofile.read(buffer, 512);
 
-        if (n == 0) return false;		
+        if (n == 0) return false;
         buflen = n;
         bufpos = 0;
       }
@@ -183,7 +183,7 @@ namespace Pattern {
     if (!videofile) stopWithErrorMessage("Could not read " FILENAME);
     Serial.println("File opened");
     playing = true;
-    elapsedSinceLastFrame = 0;  
+    elapsedSinceLastFrame = 0;
   }
 
   void loop()
@@ -196,7 +196,7 @@ namespace Pattern {
         if (header[0] == '*') {
           // found an image frame
           unsigned int size = (header[1] | (header[2] << 8)) * 3;
-          
+
           // note that we could just use LED_WIDTH and LED_HEIGHT here, but this
           // will tell us about read errors when the data encoded doesn't match
           // the constants in this file.
@@ -250,7 +250,7 @@ namespace Pattern {
 
 namespace Networking {
   // CHANGE FOR YOUR SETUP most software this is 1, some software send out artnet first universe as 0.
-  const int startUniverse = 0; 
+  const int startUniverse = 0;
 
   // have we received data for each universe?
   bool universesReceived[maxUniverses];
@@ -271,28 +271,28 @@ namespace Networking {
   // frame time in ms, using millis()
   uint32_t _frameMs = 0;
 
-  // In this fn, we use teensySN() to generate a unique "serial number" for this 
+  // In this fn, we use teensySN() to generate a unique "serial number" for this
   // microcontroller. we use that with the `serials` chart to determine which IP
   // to use when joining the network.
   // update the `serials` array when you have new hardware.
   void updateIp()
   {
     // serial number of this Teensy
-    uint8_t serial[4];  
+    uint8_t serial[4];
     teensySN(serial);
     Serial.printf("INFO:   Serial number: %02X-%02X-%02X-%02X \n", serial[0], serial[1], serial[2], serial[3]);
 
     byte hardcoded_addresses[5] = {32, 33, 34, 35, 36};
     uint8_t serials[5] = {
         //0xDA, // 00-10-16-DA orange
-        0x9D, // LED Door 
+        0x9D, // LED Door
         // 0xFE, // replacing this for prototyping
         0x5E, // 00-0C-46-5E yellow
         0x5D, // 00-0C-46-5D green - motherbrain
         0x92, // 00-0C-46-92 blue
         0x70, // 00-0C-46-70 purple
     };
-    
+
     for (int i = 0; i < 5; i++)
     {
       if (serials[i] == serial[3])
@@ -331,7 +331,7 @@ namespace Networking {
         leds.setPixel(led, frame[i * 3], frame[i * 3 + 1], frame[i * 3 + 2]);
       }
     }
-  }  
+  }
 
   // https://www.arduino.cc/reference/en/libraries/ethernet/
   void setup()
@@ -349,7 +349,7 @@ namespace Networking {
     }
     else if (Ethernet.hardwareStatus() == EthernetW5500) {
       Serial.println("INFO:   W5500 Ethernet controller detected.");
-    }    
+    }
 
     Serial.println("INFO:   Setting up Artnet via Ethernet cable...");
     Serial.printf("INFO:   Link status (should be 2): %d\n", Ethernet.linkStatus());
@@ -448,10 +448,10 @@ namespace Networking {
         {
           Serial.println("STATUS: Receiving Artnet data.");
           Networking::hasReceivedArtnetPacket = true;
-        } 
+        }
 
-        Networking::handleDmxFrame();     
-      }    
+        Networking::handleDmxFrame();
+      }
     }
   }
 }
