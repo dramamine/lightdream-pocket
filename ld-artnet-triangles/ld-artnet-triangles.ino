@@ -421,10 +421,8 @@ namespace Networking {
 void setup()
 {
   Serial.begin(115200);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
-  Serial.println("INFO:   Version: 2023.10");
+  delay(2000);
+  Serial.println("INFO:   Version: 2023.11");
   Serial.printf("INFO:   LED counter: %d pixels, %d LEDs \n", leds.numPixels(), numLeds);
   Serial.println();
 

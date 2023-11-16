@@ -54,7 +54,7 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 #include "TeensyID.h"
 
 // i.e. LEDs per output.
-#define LED_WIDTH 510
+#define LED_WIDTH 800
 
 // i.e. how many strips; Octo board supports 8 channels out
 #define LED_HEIGHT 8
@@ -63,7 +63,7 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 // it will get stuck at `setup()::artnet.begin()`.
 // ## Troubleshooting the network
 // If you see "Link status (should be 2)"
-bool useNetwork = true;
+bool useNetwork = false;
 
 // make sure the config above is correct for your setup. we expect the controlling
 // software  to send (LED_HEIGHT * universesPerStrip) universes to this IP.
@@ -172,11 +172,9 @@ namespace Pattern {
 
   void loop()
   {
-    Serial.println()
-    leds.setPixel(1,hues[((140+ticks) % 255)]);
-    leds.setPixel(2,hues[((170+ticks) % 255)]);
-    leds.setPixel(3,hues[((200+ticks) % 255)]);
-    leds.setPixel(4,hues[((230+ticks) % 255)]);
+    for (uint16_t i=0; i<numLeds; i++) {
+      leds.setPixelColor(i, hues[(i+ticks) % 256]);
+    }
     leds.show();
     ticks++;
     delay((int)1000/fps);
@@ -386,10 +384,8 @@ namespace Networking {
 void setup()
 {
   Serial.begin(115200);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
-  Serial.println("INFO:   Version: 2023.10");
+  delay(2000);
+  Serial.println("INFO:   Version: 2023.11");
   Serial.printf("INFO:   LED counter: %d pixels, %d LEDs \n", leds.numPixels(), numLeds);
   Serial.println();
 

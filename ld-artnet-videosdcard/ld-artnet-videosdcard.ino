@@ -460,7 +460,7 @@ void setup()
 {
   Serial.begin(115200);
   delay(2000);
-  Serial.println("INFO:   Version: 2023.10");
+  Serial.println("INFO:   Version: 2023.11");
   Serial.printf("INFO:   LED counter: %d pixels, %d LEDs \n", leds.numPixels(), numLeds);
   Serial.println();
 
