@@ -63,7 +63,7 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 // it will get stuck at `setup()::artnet.begin()`.
 // ## Troubleshooting the network
 // If you see "Link status (should be 2)"
-bool useNetwork = true;
+bool useNetwork = false;
 
 // make sure the config above is correct for your setup. we expect the controlling
 // software  to send (LED_HEIGHT * universesPerStrip) universes to this IP.
