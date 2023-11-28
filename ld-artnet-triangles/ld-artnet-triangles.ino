@@ -54,16 +54,16 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 #include "TeensyID.h"
 
 // i.e. LEDs per output.
-#define LED_WIDTH 600
+#define LED_WIDTH 175
 
 // i.e. how many strips; Octo board supports 8 channels out
-#define LED_HEIGHT 8
+#define LED_HEIGHT 1
 
 // if true, program expects to be plugged into a network switch. If it's not,
 // it will get stuck at `setup()::artnet.begin()`.
 // ## Troubleshooting the network
 // If you see "Link status (should be 2)"
-bool useNetwork = false;
+bool useNetwork = true;
 
 // make sure the config above is correct for your setup. we expect the controlling
 // software  to send (LED_HEIGHT * universesPerStrip) universes to this IP.

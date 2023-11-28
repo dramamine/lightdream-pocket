@@ -159,7 +159,6 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 .vscode/settings.json
-artnet-to-sd-card/340x4-full-lightdream-autoplay.mp4
-artnet-to-sd-card/340x6-lightdream-autoplay.mp4
-artnet-to-sd-card/output-340x4-full-lightdream-autoplay.bin
-artnet-to-sd-card/output-340x6-lightdream-autoplay.bin
+
+*.mp4
+*.bin
