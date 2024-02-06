@@ -145,14 +145,113 @@ int layerDescription[13][5] = {
   {1, 999, 6, 5, 13}
 };
 
-// TODO demo pattern while network loads?
+
 namespace Pattern {
+
+  const int BRIGHTNESS = 100; // out of 255
+  int ticks = 0;
+
+  long getLedColorHSV(byte h, byte s, byte v)
+  {
+    byte RedLight;
+    byte GreenLight;
+    byte BlueLight;
+    // this is the algorithm to convert from RGB to HSV
+    h = (h * 192) / 256;           // 0..191
+    unsigned int i = h / 32;       // We want a value of 0 thru 5
+    unsigned int f = (h % 32) * 8; // 'fractional' part of 'i' 0..248 in jumps
+
+    unsigned int sInv = 255 - s; // 0 -> 0xff, 0xff -> 0
+    unsigned int fInv = 255 - f; // 0 -> 0xff, 0xff -> 0
+    byte pv = v * sInv / 256;    // pv will be in range 0 - 255
+    byte qv = v * (256 - s * f / 256) / 256;
+    byte tv = v * (256 - s * fInv / 256) / 256;
+
+    switch (i)
+    {
+    case 0:
+      RedLight = v;
+      GreenLight = tv;
+      BlueLight = pv;
+      break;
+    case 1:
+      RedLight = qv;
+      GreenLight = v;
+      BlueLight = pv;
+      break;
+    case 2:
+      RedLight = pv;
+      GreenLight = v;
+      BlueLight = tv;
+      break;
+    case 3:
+      RedLight = pv;
+      GreenLight = qv;
+      BlueLight = v;
+      break;
+    case 4:
+      RedLight = tv;
+      GreenLight = pv;
+      BlueLight = v;
+      break;
+    case 5:
+      RedLight = v;
+      GreenLight = pv;
+      BlueLight = qv;
+      break;
+    }
+    long rgb = 0;
+
+    rgb += RedLight << 16;
+    rgb += GreenLight << 8;
+    rgb += BlueLight;
+    return rgb;
+  }
+
+
   void setup() {
+  }
+
+  long getLayerColor(uint8_t layer) {
+    const int highlightedLayer = (ticks / 3) % (layers + 7);
+    int distance = abs( (layer+2) - highlightedLayer );
+    Serial.printf("debug layer color (highlighted, layer, distance): %d, %d, %d\n", highlightedLayer, layer, distance);
+    if (distance >= 3) {
+      return getLedColorHSV(0, 0, 0);
+    } else if (distance == 2) {
+      return getLedColorHSV(ticks/4 % 256, 255, 25);
+    } else if (distance == 1) {
+      return getLedColorHSV(ticks/4 % 256, 255, 50);
+    } else {
+      return getLedColorHSV(ticks/4 % 256, 255, BRIGHTNESS);
+    }
   }
 
   void loop()
   {
-    // Serial.println("demo pattern");
+
+    // for (uint16_t i=0; i<numLeds; i++) {
+    //   leds.setPixelColor(i, hues[(i+ticks) % 256]);
+    // }
+    uint16_t i = 0;
+    for (int layer=0; layer<13; layer++) {
+      long color = getLayerColor(layer);
+      for (uint8_t j=0; j < ledsPerLayer[layer]; j++) {
+        for (int k=0; k<LED_HEIGHT; k++) {
+          leds.setPixelColor(i+LED_WIDTH*k, color);
+        }
+        i++;
+      }
+      for (uint8_t j=0; j < blanksPerLayer[layer]; j++) {
+        // always black, so don't need to set color
+        i++;
+      }
+      // Serial.printf("after layer, i was: %d\n", i);
+    }
+
+
+    leds.show();
+    ticks++;
   }
 }
 
@@ -426,7 +525,7 @@ void setup()
 {
   Serial.begin(115200);
   delay(2000);
-  Serial.println("INFO:   Version: 2023.11");
+  Serial.println("INFO:   Version: 2024.02");
   Serial.printf("INFO:   LED counter: %d pixels, %d LEDs \n", leds.numPixels(), numLeds);
   Serial.println();
 
@@ -452,6 +551,5 @@ void loop()
   if (!Networking::hasReceivedArtnetPacket)
   {
     Pattern::loop();
-    delay(1000/20);
   }
 }
