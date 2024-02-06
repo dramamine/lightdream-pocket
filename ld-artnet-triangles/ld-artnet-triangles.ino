@@ -18,7 +18,7 @@ After warming up, this was getting 40 fps with 3 universes.
 
 The MIT License (MIT)
 
-Copyright (c) 2018-2023 Marten Silbiger
+Copyright (c) 2018-2024 Marten Silbiger
 https://github.com/dramamine/lightdream-scripts
 
 Copyright (c) 2014 Nathanaël Lécaudé
@@ -145,19 +145,23 @@ int layerDescription[13][5] = {
   {1, 999, 6, 5, 13}
 };
 
+// TODO demo pattern while network loads?
 namespace Pattern {
   void setup() {
   }
 
   void loop()
   {
+    // Serial.println("demo pattern");
   }
 }
 
 namespace Networking {
   // Teensy serial to IP address
-  int _macToIpPairs[6][2] = {
-    {0xFE, 32}, // 00-10-16-DA orange & general prototyping one
+  int _macToIpPairs[8][2] = {
+    {0xCB, 31}, // 00-15-B5-CB red i.e. "top"
+    {0xDA, 32}, // 00-10-16-DA orange
+    {0xFE, 32}, // 00-0C-35-FE silver (general prototyping)
     {0x9D, 32}, // LED door
     {0x5E, 33}, // 00-0C-46-5E yellow
     {0x5D, 34}, // 00-0C-46-5D green - motherbrain
@@ -448,5 +452,6 @@ void loop()
   if (!Networking::hasReceivedArtnetPacket)
   {
     Pattern::loop();
+    delay(1000/20);
   }
 }
