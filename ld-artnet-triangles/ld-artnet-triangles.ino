@@ -89,7 +89,7 @@ const int maxUniverses = LED_HEIGHT * universesPerStrip;
 const int numLeds = LED_WIDTH * LED_HEIGHT;
 DMAMEM int displayMemory[LED_WIDTH * 6];
 int drawingMemory[LED_WIDTH * 6];
-const int config = WS2811_GRB | WS2811_800kHz;
+const int config = WS2811_RGB | WS2811_800kHz;
 OctoWS2811 leds(LED_WIDTH, displayMemory, drawingMemory, config);
 
 // Artnet settings
@@ -97,6 +97,7 @@ Artnet artnet;
 
 byte timeOffset = 0;
 
+// used for test pattern, not Artnet.
 byte ledsPerLayer[] = {
   72,
   66,
@@ -113,6 +114,7 @@ byte ledsPerLayer[] = {
   6
 };
 
+// used for test pattern, not Artnet.
 byte blanksPerLayer[] = {
   5,
   7,
@@ -130,6 +132,10 @@ byte blanksPerLayer[] = {
 };
 
 uint8_t layers = 13;
+
+// used for data coming from Artnet. Remember that the way the triangle rows are
+// arranged within the universes is complex (to reduce the number of universes sent)
+//
 // [universe, DMX starting channel, leds per layer, blanks per layer, adjustment]
 int layerDescription[13][5] = {
   {0, 1, 72, 5, 0},
@@ -150,7 +156,7 @@ int layerDescription[13][5] = {
 
 namespace Pattern {
 
-  const int BRIGHTNESS = 100; // out of 255
+  const int BRIGHTNESS = 50; // out of 255
   int ticks = 0;
 
   long getLedColorHSV(byte h, byte s, byte v)
@@ -229,14 +235,12 @@ namespace Pattern {
     }
   }
 
+
+
   void loop()
   {
-
-    // for (uint16_t i=0; i<numLeds; i++) {
-    //   leds.setPixelColor(i, hues[(i+ticks) % 256]);
-    // }
     uint16_t i = 0;
-    for (int layer=0; layer<13; layer++) {
+    for (int layer=0; layer<layers; layer++) {
       long color = getLayerColor(layer);
       for (uint8_t j=0; j < ledsPerLayer[layer]; j++) {
         for (int k=0; k<LED_HEIGHT; k++) {
@@ -284,9 +288,6 @@ namespace Networking {
   // true once we have received an Artnet packet
   bool hasReceivedArtnetPacket = false;
 
-
-
-
   // frame time in ms, using millis()
   uint32_t _frameMs = 0;
 
@@ -303,7 +304,7 @@ namespace Networking {
 
     for (int i=0; i<6; i++) {
       if (_macToIpPairs[i][0] == serial[3]) {
-        Serial.println("INFO:   Used serial to figure out which brain I am.");
+        // Serial.println("INFO:   Used serial to figure out which brain I am.");
         _fakemac[5] = _macToIpPairs[i][0];
         _ip[3] = _macToIpPairs[i][1];
       }
@@ -365,10 +366,10 @@ namespace Networking {
     int ledIdx = 0;
 
     for (int i=0; i<layers; i++) {
-      int uni = layerDescription[i][0];
+      // int uni = layerDescription[i][0];
       int ledsPerLayer = layerDescription[i][2];
       int blanksPerLayer = layerDescription[i][3];
-      int adjustment = layerDescription[i][4];
+      // int adjustment = layerDescription[i][4];
       ledIdx += ledsPerLayer;
       for (int j=0; j<blanksPerLayer; j++) {
         leds.setPixel(ledIdx, 100, 100, 100);
@@ -517,6 +518,12 @@ namespace Networking {
         {
           Serial.println("STATUS: Receiving Artnet data.");
           Networking::hasReceivedArtnetPacket = true;
+          // black out each LED
+          for (int i = 0; i < numLeds; i++)
+          {
+            leds.setPixel(i, 0, 0, 0);
+          }
+          leds.show();
         }
 
         Networking::handleDmxFrame();
