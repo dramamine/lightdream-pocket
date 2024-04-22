@@ -59,6 +59,8 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 // i.e. how many strips; Octo board supports 8 channels out
 #define LED_HEIGHT 8
 
+#define version "2024.04"
+
 // if true, program expects to be plugged into a network switch. If it's not,
 // it will get stuck at `setup()::artnet.begin()`.
 // ## Troubleshooting the network
@@ -215,7 +217,7 @@ namespace Pattern {
   long getLayerColor(uint8_t layer) {
     const int highlightedLayer = (ticks / 3) % (layers + 7);
     int distance = abs( (layer+2) - highlightedLayer );
-    Serial.printf("debug layer color (highlighted, layer, distance): %d, %d, %d\n", highlightedLayer, layer, distance);
+    // Serial.printf("debug layer color (highlighted, layer, distance): %d, %d, %d\n", highlightedLayer, layer, distance);
     if (distance >= 3) {
       return getLedColorHSV(0, 0, 0);
     } else if (distance == 2) {
@@ -346,6 +348,7 @@ namespace Networking {
   void _updateLedRow(uint8_t *frame, int layer, int uni, int dmxPosition, int adjustment) {
     int uniOffset = uni % 3;
     int panelOffset = floor(uni / 3) * LED_WIDTH;
+    // Serial.printf("Using offset %d for universe %d\n", panelOffset, uni);
     return _copyFrameToLeds(
       frame,
       layerDescription[layer][2],
@@ -380,8 +383,9 @@ namespace Networking {
     int uniOffset = uni % 3;
 
     for (int i=0; i<layers; i++) {
-      int uni = layerDescription[i][0];
-      if (uni != uniOffset) {
+      int uniFromDescription = layerDescription[i][0];
+      if (uniFromDescription != uniOffset) {
+        // why?? does this happen?
         continue;
       }
 
@@ -525,7 +529,7 @@ void setup()
 {
   Serial.begin(115200);
   delay(2000);
-  Serial.println("INFO:   Version: 2024.02");
+  Serial.printf("INFO:   Version: %s\n", version);
   Serial.printf("INFO:   LED counter: %d pixels, %d LEDs \n", leds.numPixels(), numLeds);
   Serial.println();
 
