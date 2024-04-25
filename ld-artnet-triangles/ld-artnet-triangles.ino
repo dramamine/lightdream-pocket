@@ -72,7 +72,7 @@ bool useNetwork = true;
 const int ledsPerUniverse = 170;
 
 // Send fps timing to Serial out, should be around 40 fps
-bool showFps = true;
+bool showFps = false;
 
 // how long is our update look taking to render?
 // for reference: runs about 12us for regular, 32-universe code
@@ -140,17 +140,17 @@ uint8_t layers = 13;
 int layerDescription[13][5] = {
   {0, 1, 72, 5, 0},
   {0, 217, 66, 7, 0},
-  {1, 513, 60, 7, 0},
-  {1, 693, 54, 6, 0},
-  {1, 855, 48, 7, 2},
-  {2, 1025, 45, 6, 3},
-  {2, 1160, 39, 5, 3},
-  {2, 1277, 33, 6, 3},
-  {2, 1376, 27, 7, 5},
-  {2, 1457, 21, 7, 7},
-  {0, 415, 15, 7, 10},
-  {0, 460, 12, 6, 10},
-  {1, 999, 6, 5, 13}
+  {1, 513, 60, 7, -2},
+  {1, 693, 54, 6, 1},
+  {1, 855, 48, 7, -1},
+  {2, 1025, 45, 6, 0},
+  {2, 1160, 39, 5, -1},
+  {2, 1277, 33, 6, 1},
+  {2, 1376, 27, 7, -1},
+  {2, 1457, 21, 7, 2},
+  {0, 415, 15, 7, 2},
+  {0, 460, 12, 6, 2},
+  {1, 999, 6, 5, 0}
 };
 
 
@@ -259,11 +259,33 @@ namespace Pattern {
     leds.show();
     ticks++;
   }
+
+  void intro() {
+    uint16_t i = 0;
+    for (int layer=0; layer<layers; layer++) {
+      long color = getLayerColor(layer);
+      for (uint8_t j=0; j < ledsPerLayer[layer]; j++) {
+        for (int k=0; k<LED_HEIGHT; k++) {
+          leds.setPixelColor(i+LED_WIDTH*k, color);
+        }
+        i++;
+      }
+      for (uint8_t j=0; j < blanksPerLayer[layer]; j++) {
+        // always black, so don't need to set color
+        i++;
+      }
+      // Serial.printf("after layer, i was: %d\n", i);
+    }
+
+
+    leds.show();
+  }
 }
 
 namespace Networking {
   // Teensy serial to IP address
-  int _macToIpPairs[8][2] = {
+  const byte pairs = 8;
+  int _macToIpPairs[pairs][2] = {
     {0xCB, 31}, // 00-15-B5-CB red i.e. "top"
     {0xDA, 32}, // 00-10-16-DA orange
     {0xFE, 32}, // 00-0C-35-FE silver (general prototyping)
@@ -302,9 +324,9 @@ namespace Networking {
     teensySN(serial);
     Serial.printf("INFO:   Serial number: %02X-%02X-%02X-%02X \n", serial[0], serial[1], serial[2], serial[3]);
 
-    for (int i=0; i<6; i++) {
+    for (int i=0; i<pairs; i++) {
       if (_macToIpPairs[i][0] == serial[3]) {
-        // Serial.println("INFO:   Used serial to figure out which brain I am.");
+        Serial.println("INFO:   Used serial to figure out which brain I am.");
         _fakemac[5] = _macToIpPairs[i][0];
         _ip[3] = _macToIpPairs[i][1];
       }
@@ -426,7 +448,6 @@ namespace Networking {
     }
 
     Serial.println("STATUS: Connected to network switch.");
-
     artnet.begin(_fakemac, _ip);
 
     Serial.println("STATUS: Listening for Artnet data.");
@@ -541,13 +562,14 @@ void setup()
   Serial.println();
 
   leds.begin();
+  Pattern::setup();
+  Pattern::intro();
+
 
   // @TODO see if we can handle failure in a cleaner way here
   if (useNetwork) {
     Networking::setup();
   }
-
-  Pattern::setup();
 }
 
 
