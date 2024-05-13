@@ -59,7 +59,7 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 // i.e. how many strips; Octo board supports 8 channels out
 #define LED_HEIGHT 8
 
-#define version "2024.04"
+#define version "2024.05"
 
 // if true, program expects to be plugged into a network switch. If it's not,
 // it will get stuck at `setup()::artnet.begin()`.
@@ -218,6 +218,8 @@ namespace Pattern {
 
 
   void setup() {
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, HIGH);
   }
 
   long getLayerColor(uint8_t layer) {
@@ -498,6 +500,15 @@ namespace Networking {
 
     if (showFps) {
       Networking::printFps();
+    }
+
+    // flash LED along with received data
+    if (uni == 0 && universesReceivedTotal[0] % 30 == 0) {
+      if (uni == 0 && universesReceivedTotal[0] % 60 == 0) {
+        digitalWrite(LED_BUILTIN, HIGH);
+      } else {
+        digitalWrite(LED_BUILTIN, LOW);
+      }
     }
 
     // how many microseconds to perform these operations for one Artnet frame?
