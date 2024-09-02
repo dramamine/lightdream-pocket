@@ -72,7 +72,7 @@ bool useNetwork = true;
 const int ledsPerUniverse = 170;
 
 // Send fps timing to Serial out, should be around 40 fps
-bool showFps = false;
+bool showFps = true;
 
 // how long is our update look taking to render?
 // for reference: runs about 12us for regular, 32-universe code
@@ -286,11 +286,12 @@ namespace Pattern {
 
 namespace Networking {
   // Teensy serial to IP address
-  const byte pairs = 8;
+  const byte pairs = 9;
   int _macToIpPairs[pairs][2] = {
     {0xCB, 31}, // 00-15-B5-CB red i.e. "top"
     {0xDA, 32}, // 00-10-16-DA orange
     {0xFE, 32}, // 00-0C-35-FE silver (general prototyping)
+    {0xF4, 32}, // 00-0C-35-FE silver (general prototyping)
     {0x9D, 32}, // LED door
     {0x5E, 33}, // 00-0C-46-5E yellow
     {0x5D, 34}, // 00-0C-46-5D green - motherbrain

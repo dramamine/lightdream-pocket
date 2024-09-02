@@ -4,23 +4,23 @@ import math
 
 USE_GRB = False
 
-output_file_path  = "./output-340x8.bin"
+output_file_path = "./output-340x8.bin"
 sequence_path = "./input.mp4"
 
 # NOTE: make sure the teensy has these same values for width and height
 #
 # how many LEDs of data do we read from each video row?
 # this number is 170 maximum (510 bytes per row / 3 bytes per pixel)
-WIDTH = 170*2
-# i.e. number of outputs used by the Teensy
-# height says 6 but really it's 8 when we get to Teensyland since we're filling the 4th and 8th with zeroes
+WIDTH = 50
+# i.e. number of outputs used by the Teensy.
+# just plan things to use 8 rows and you'll be happy
 HEIGHT = 8
 FPS = 40.0
 
 def to_array(rows):
   res = []
   for row in rows:
-    for i in range(170):
+    for i in range(WIDTH):
       # render in GRB oder
       if (USE_GRB):
           res.append([
