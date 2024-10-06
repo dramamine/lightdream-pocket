@@ -69,7 +69,7 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 // it will get stuck at `setup()::artnet.begin()`.
 // ## Troubleshooting the network
 // If you see "Link status (should be 2)"
-bool useNetwork = false;
+bool useNetwork = true;
 
 // how many strips? Octo board supports 8 data channels out
 // const byte LED_HEIGHT = 4;        // change for your setup
@@ -98,7 +98,7 @@ const int maxUniverses = LED_HEIGHT * universesPerStrip;
 const int numLeds = LED_WIDTH * LED_HEIGHT;
 DMAMEM int displayMemory[LED_WIDTH * 6];
 int drawingMemory[LED_WIDTH * 6];
-const int config = WS2811_GRB | WS2811_800kHz;
+const int config = WS2811_RGB | WS2811_800kHz;
 OctoWS2811 leds(LED_WIDTH, displayMemory, drawingMemory, config);
 
 // Artnet settings
@@ -285,7 +285,9 @@ namespace Networking {
     byte hardcoded_addresses[5] = {32, 33, 34, 35, 36};
     uint8_t serials[5] = {
         //0xDA, // 00-10-16-DA orange
-        0x9D, // LED Door
+        // 0x9D, // LED Door
+        // 0x5F, // LED Ceiling
+        0x60, // 00-19-77-60 tester
         // 0xFE, // replacing this for prototyping
         0x5E, // 00-0C-46-5E yellow
         0x5D, // 00-0C-46-5D green - motherbrain
@@ -456,34 +458,45 @@ namespace Networking {
   }
 }
 
+bool hasSDCard;
+
 void setup()
 {
   Serial.begin(115200);
   delay(2000);
-  Serial.println("INFO:   Version: 2023.11");
+  Serial.println("INFO:   Version: 2024.10");
+  Serial.println("INFO:   ld-artnet-videosdcard.ino");
   Serial.printf("INFO:   LED counter: %d pixels, %d LEDs \n", leds.numPixels(), numLeds);
   Serial.println();
 
   leds.begin();
 
-  // @TODO see if we can handle failure in a cleaner way here
-  if (useNetwork) {
-    Networking::setup();
+  hasSDCard = SD.begin(BUILTIN_SDCARD);
+  if (hasSDCard) {
+    Serial.println("INFO:   SD card found.");
+  } else {
+    Serial.println("ERROR:  SD card not found.");
   }
+  delay(2000);
 
-  Pattern::setup();
+  if (hasSDCard) {
+    Pattern::setup();
+  } else {
+    Serial.println("setting up networking/...");
+    Networking::setup();    
+  }
 }
 
 
 
 void loop()
 {
-  if (useNetwork) {
+  if (!hasSDCard) {
     Networking::loop();
   }
 
 
-  if (!Networking::hasReceivedArtnetPacket)
+  if (hasSDCard && !Networking::hasReceivedArtnetPacket)
   {
     Pattern::loop();
   }

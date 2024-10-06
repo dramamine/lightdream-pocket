@@ -4,23 +4,24 @@ import math
 
 USE_GRB = False
 
-output_file_path = "./output-340x8.bin"
-sequence_path = "./input.mp4"
+sequence_path = "./3ux8-quest-ceiling-noise-pattern-color-2column-update.mp4"
+output_file_path = "L:\output.bin"
 
 # NOTE: make sure the teensy has these same values for width and height
 #
 # how many LEDs of data do we read from each video row?
 # this number is 170 maximum (510 bytes per row / 3 bytes per pixel)
-WIDTH = 50
+WIDTH = 170*3
 # i.e. number of outputs used by the Teensy.
 # just plan things to use 8 rows and you'll be happy
 HEIGHT = 8
 FPS = 40.0
 
 def to_array(rows):
+  controversial_max_range = min(170, WIDTH)
   res = []
   for row in rows:
-    for i in range(WIDTH):
+    for i in range(controversial_max_range):
       # render in GRB oder
       if (USE_GRB):
           res.append([
