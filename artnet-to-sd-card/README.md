@@ -2,6 +2,9 @@
 
 @TODO command line not working yet, just edit the constants in the files included
 
+USE REGULAR COMNMAND LINE! cmd!
+
+
 ### Basic Example: 170 x 8 LEDs or less
 
 #### From Resolume:
@@ -30,6 +33,11 @@ At this point, you can press Record and Stop to capture your data. Any compressi
 
 From this folder:
 
+```sh
+cd artnet-to-sd-card
+C:\Python311\python.exe video2sdcard.py
+```
+
 ```bash
 pip install -r requirements.txt
 
@@ -39,6 +47,8 @@ python video2sdcard.py lightjams.mp4
 # specify width, height, output file, @TODO not implemented yet
 python video2sdcard.py lightjams.mp4 --width=170 --height==8 --fps=30.0 --output=output.bin
 ```
+
+
 
 ### Teensy code:
 

@@ -1,17 +1,15 @@
-
 import cv2
 import math
-
 USE_GRB = False
 
-sequence_path = "./3ux8-quest-ceiling-noise-pattern-color-2column-update.mp4"
+sequence_path = "./170x8-velvet-backpack-content.mp4"
 output_file_path = "L:\output.bin"
 
 # NOTE: make sure the teensy has these same values for width and height
 #
 # how many LEDs of data do we read from each video row?
 # this number is 170 maximum (510 bytes per row / 3 bytes per pixel)
-WIDTH = 170*3
+WIDTH = 170
 # i.e. number of outputs used by the Teensy.
 # just plan things to use 8 rows and you'll be happy
 HEIGHT = 8
