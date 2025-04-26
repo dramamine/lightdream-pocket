@@ -165,12 +165,15 @@ int adjustmentLayers[8][13] = {
 };
 
 namespace Alignment {
-  int adjustmentOptions[] = {1, 0, 0, 0, 0, 0, 0, 0};
-  bool showAlignmentPattern = false;
+  int adjustmentOptions[] = {0, 0, 0, 0, 0, 0, 0, 0};
+  int alignmentSelection = 0;
 
   int _lookupAdjustment(int layer, int whichTriangle) {
     // which adjustment are we using?
     int adjIdx = adjustmentOptions[whichTriangle];
+    // if (whichTriangle == 0) {
+    //   Serial.printf("Using adjustment index: %d\n", adjIdx);
+    // }
 
     // look up by layer
     return adjustmentLayers[adjIdx][layer];
@@ -288,21 +291,32 @@ namespace Pattern {
     return total;
   }
 
+  void _blankEverything() {
+    for (int i=0; i<LED_HEIGHT*LED_WIDTH; i++) {
+      leds.setPixelColor(i, getLedColorHSV(0, 0, 0)); // set to black
+    }
+  }
+
   void _doAlignmentPattern() {
-    for (int t=0; t<8; t++) {
+    for (int t=0; t<LED_HEIGHT; t++) {
+      // only show alignment value sometimes
+      if (!(Alignment::alignmentSelection == (t+1) || Alignment::alignmentSelection == 9)) {
+        continue;
+      }
       int ledIdx = 0;
       for (int i=0; i<layers; i++) {
 
         int ledsPerLayer = layerDescription[i][2];
         int adjustment = Alignment::_lookupAdjustment(i, t);
 
-        ledIdx = _countPreviousLeds(i) + adjustment;
+        ledIdx = t*LED_WIDTH + _countPreviousLeds(i) + adjustment;
 
         for (int led = 0; led < ledsPerLayer; led++) {
           // see if LED is within 3 pixels of the midpoint of ledsPerLayer
           int midpoint = ledsPerLayer / 2;
           if (abs(led - midpoint) <= 3) {
             leds.setPixelColor(ledIdx, getLedColorHSV(led * 10 % 256, 255, BRIGHTNESS));
+            // leds.setPixelColor(ledIdx, getLedColorHSV(0, 255, BRIGHTNESS));
           } else {
             leds.setPixelColor(ledIdx, getLedColorHSV(0, 0, 0)); // set to black
           }
@@ -457,13 +471,10 @@ namespace Networking {
       }
     }
 
-    int sap = round(frame[503] / 16);
-    if (sap == 8) {
-      Serial.println("alignment pattern true");
-      Alignment::showAlignmentPattern = true;
-    } else if (sap == 0) {
-      Serial.println("alignment pattern false");
-      Alignment::showAlignmentPattern = false;
+    int oldValue = Alignment::alignmentSelection;
+    Alignment::alignmentSelection = round(frame[503] / 16);
+    if (oldValue != Alignment::alignmentSelection) {
+      Pattern::_blankEverything();
     }
 
     Serial.printf("My adj options are now: %d %d %d %d %d %d %d %d \n",
@@ -501,7 +512,7 @@ namespace Networking {
       _updateLedRow(frame, i, uni, dmxPosition, adjustment);
     }
 
-    if (Alignment::showAlignmentPattern) {
+    if (Alignment::alignmentSelection > 0) {
       Pattern::_doAlignmentPattern();
     }
   }
