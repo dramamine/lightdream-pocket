@@ -137,7 +137,7 @@ uint8_t layers = 13;
 // arranged within the universes is complex (to reduce the number of universes sent)
 //
 // [universe, DMX starting channel, leds per layer, blanks per layer, adjustment]
-int layerDescriptionOne[13][5] = {
+int layerDescription[13][5] = {
   {0, 1, 72, 5, 0},
   {0, 217, 66, 7, 0},
   {1, 513, 60, 7, -2},
@@ -153,25 +153,29 @@ int layerDescriptionOne[13][5] = {
   {1, 999, 6, 5, 0}
 };
 
-// add adjustment: odds shift right, evens shift left
-// modified 4/12/2025
-// this looks great with that trunk panel I've got
-int layerDescription[13][5] = {
-  {0, 1, 72, 5, 0},
-  {0, 217, 66, 7, 0},
-  {1, 513, 60, 7, -1},
-  {1, 693, 54, 6, 1},
-  {1, 855, 48, 7, 2},
-  {2, 1025, 45, 6, 3},
-  {2, 1160, 39, 5, 5},
-  {2, 1277, 33, 6, 5},
-  {2, 1376, 27, 7, 6}, // #9
-  {2, 1457, 21, 7, 8},
-  {0, 415, 15, 7, 10},
-  {0, 460, 12, 6, 10},
-  {1, 999, 6, 5, 10}
+int adjustmentLayers[8][13] = {
+  {0, 0, -2, 1, -1, 0, -1, 1, -1, 2, 2, 2, 0}, // default
+  {0, -2, -2, -2, -1, -2, -1, -1, -1, 0, 0, 0, 0}, // 4/20/2025 leftward slightly off
+  {0, 0, -1, 1, 2, 3, 5, 5, 6, 8, 10, 10, 10}, // 4/12/2025 rightward trunk modified
+  {0, 0,  0,  3, 5, 7, 9, 12, 14, 16, 20, 21, 23}, // 4/16/2025 rightward started 2 lanes early
+  {0, 0, -2, 1, -1, 0, -1, 1, -1, 2, 2, 2, 0}, // default
+  {0, 0, -2, 1, -1, 0, -1, 1, -1, 2, 2, 2, 0}, // default
+  {0, 0, -2, 1, -1, 0, -1, 1, -1, 2, 2, 2, 0}, // default
+  {0, 0, -2, 1, -1, 0, -1, 1, -1, 2, 2, 2, 0}, // default
 };
 
+namespace Alignment {
+  int adjustmentOptions[] = {1, 0, 0, 0, 0, 0, 0, 0};
+  bool showAlignmentPattern = false;
+
+  int _lookupAdjustment(int layer, int whichTriangle) {
+    // which adjustment are we using?
+    int adjIdx = adjustmentOptions[whichTriangle];
+
+    // look up by layer
+    return adjustmentLayers[adjIdx][layer];
+  }
+}
 
 namespace Pattern {
 
@@ -285,39 +289,40 @@ namespace Pattern {
   }
 
   void _doAlignmentPattern() {
-    int ledIdx = 0;
-    for (int i=0; i<layers; i++) {
+    for (int t=0; t<8; t++) {
+      int ledIdx = 0;
+      for (int i=0; i<layers; i++) {
 
-      int ledsPerLayer = layerDescription[i][2];
-      // int blanksPerLayer = layerDescription[i][3];
-      int adjustment = layerDescription[i][4];
+        int ledsPerLayer = layerDescription[i][2];
+        int adjustment = Alignment::_lookupAdjustment(i, t);
 
-      ledIdx = _countPreviousLeds(i) + adjustment;
+        ledIdx = _countPreviousLeds(i) + adjustment;
 
-      for (int led = 0; led < ledsPerLayer; led++) {
-        // see if LED is within 3 pixels of the midpoint of ledsPerLayer
-        int midpoint = ledsPerLayer / 2;
-        if (abs(led - midpoint) <= 3) {
-          leds.setPixelColor(ledIdx, getLedColorHSV(led * 10 % 256, 255, BRIGHTNESS));
-        } else {
-          leds.setPixelColor(ledIdx, getLedColorHSV(0, 0, 0)); // set to black
+        for (int led = 0; led < ledsPerLayer; led++) {
+          // see if LED is within 3 pixels of the midpoint of ledsPerLayer
+          int midpoint = ledsPerLayer / 2;
+          if (abs(led - midpoint) <= 3) {
+            leds.setPixelColor(ledIdx, getLedColorHSV(led * 10 % 256, 255, BRIGHTNESS));
+          } else {
+            leds.setPixelColor(ledIdx, getLedColorHSV(0, 0, 0)); // set to black
+          }
+          ledIdx++;
         }
-        ledIdx++;
       }
-
     }
+
 
     leds.show();
   }
 
   void loop()
   {
-    _doAlignmentPattern();
+    _rippleLayers();
     ticks++;
   }
 
   void intro() {
-    _doAlignmentPattern();
+    _rippleLayers();
   }
 }
 
@@ -353,6 +358,8 @@ namespace Networking {
   // frame time in ms, using millis()
   uint32_t _frameMs = 0;
 
+
+
   // In this fn, we use teensySN() to generate a unique "serial number" for this
   // microcontroller. we use that with the `serials` chart to determine which IP
   // to use when joining the network.
@@ -383,20 +390,6 @@ namespace Networking {
     return total;
   }
 
-  // This just dumps the LED data without doing any math for blanks, etc.
-  // void updateLedsSimple(int uni) {
-  //   uint8_t *frame = artnet.getDmxFrame();
-  //   int ledIdx = uni * ledsPerUniverse;
-  //   for (int i=0; i<170; i++) {
-  //     leds.setPixel(
-  //       ledIdx+i,
-  //       frame[3*i],
-  //       frame[3*i+1],
-  //       frame[3*i+2]
-  //     );
-  //   }
-  // }
-
   void _copyFrameToLeds(uint8_t *frame, int len, int ledIdx, int frameIdx) {
     for (int i=0; i<len; i++) {
       leds.setPixel(
@@ -420,30 +413,77 @@ namespace Networking {
     );
   }
 
-  // helper function for viewing the blanks (i.e. spaces between layers, i.e. the twisty bits)
-  void _turnOnBlanksOnly(int uni) {
-    if (uni != 0) {
+
+
+  int ctr = 0;
+  // @TODO consider move this to alignment namespace
+  void _considerUpdateMapping(uint8_t *frame, int uni) {
+    int uniOffset = uni % 3;
+    int whichTriangle = uni / 3;
+
+    if (whichTriangle > 0) {
       return;
     }
-    int ledIdx = 0;
+    if (uniOffset > 0) {
+      return;
+    }
+    ctr++;
+    if (ctr < 201) {
+      return;
+    }
+    ctr = 0;
 
-    for (int i=0; i<layers; i++) {
-      // int uni = layerDescription[i][0];
-      int ledsPerLayer = layerDescription[i][2];
-      int blanksPerLayer = layerDescription[i][3];
-      // int adjustment = layerDescription[i][4];
-      ledIdx += ledsPerLayer;
-      for (int j=0; j<blanksPerLayer; j++) {
-        leds.setPixel(ledIdx, 100, 100, 100);
-        ledIdx++;
+    // Serial.printf("update mapping running: %d %d \n", uniOffset, whichTriangle);
+    Serial.printf("My frame values are now: (%d) %d %d %d %d %d %d %d %d (%d) \n",
+      frame[494],
+      frame[495],
+      frame[496],
+      frame[497],
+      frame[498],
+      frame[499],
+      frame[500],
+      frame[501],
+      frame[502],
+      frame[503]
+    );
+
+    for (int i=0; i<8; i++) {
+      int fdx = 495 + i;
+      int fval = round(frame[fdx]/16);
+      if (fval < 8) { // max limit for options
+        Alignment::adjustmentOptions[i] = fval;
+      } else {
+        // Serial.printf("Got value outside acceptable range: %d %d", frame[fdx], fval);
       }
     }
+
+    int sap = round(frame[503] / 16);
+    if (sap == 8) {
+      Serial.println("alignment pattern true");
+      Alignment::showAlignmentPattern = true;
+    } else if (sap == 0) {
+      Serial.println("alignment pattern false");
+      Alignment::showAlignmentPattern = false;
+    }
+
+    Serial.printf("My adj options are now: %d %d %d %d %d %d %d %d \n",
+      Alignment::adjustmentOptions[0],
+      Alignment::adjustmentOptions[1],
+      Alignment::adjustmentOptions[2],
+      Alignment::adjustmentOptions[3],
+      Alignment::adjustmentOptions[4],
+      Alignment::adjustmentOptions[5],
+      Alignment::adjustmentOptions[6],
+      Alignment::adjustmentOptions[7]
+    );
+
   }
 
   void updateLeds(int uni) {
     uint8_t *frame = artnet.getDmxFrame();
 
     int uniOffset = uni % 3;
+    int whichTriangle = uni / 3;
 
     for (int i=0; i<layers; i++) {
       int uniFromDescription = layerDescription[i][0];
@@ -452,9 +492,17 @@ namespace Networking {
         continue;
       }
 
+      _considerUpdateMapping(frame, uni);
+
       int dmxPosition = layerDescription[i][1];
-      int adjustment = layerDescription[i][4];
+
+      int adjustment = Alignment::_lookupAdjustment(i, whichTriangle);
+      // int adjustment = layerDescription[i][4];
       _updateLedRow(frame, i, uni, dmxPosition, adjustment);
+    }
+
+    if (Alignment::showAlignmentPattern) {
+      Pattern::_doAlignmentPattern();
     }
   }
 
