@@ -79,6 +79,9 @@ bool showFps = true;
 // LD algorithm Q3-2023 was running 15-17us for 8-universe code
 bool showTiming = false;
 
+// @TODO maybe only enable this for the orange/purple brains?
+bool serialVisualizerEnabled = true;
+
 // ~~ end config ~~
 
 // how many universes per strip?
@@ -177,6 +180,24 @@ namespace Alignment {
 
     // look up by layer
     return adjustmentLayers[adjIdx][layer];
+  }
+}
+
+namespace SerialVisualizerSender {
+  int frameIdx = 504;
+
+  void setup()
+  {
+    Serial1.begin(9600);   // Hardware Serial1 on pins 0 (TX) and 1 (RX)
+    Serial.println("Serial visualizer sender ready.");
+  }
+
+  void send(uint8_t *frame) {
+    int r = frame[frameIdx];
+    int g = frame[frameIdx + 1];
+    int b = frame[frameIdx + 2];
+    // Serial.printf("Sending: %d,%d,%d\n", r, g, b);
+    Serial1.printf("%d,%d,%d\n", r, g, b);
   }
 }
 
@@ -493,6 +514,11 @@ namespace Networking {
   void updateLeds(int uni) {
     uint8_t *frame = artnet.getDmxFrame();
 
+    // consider update serial visualizer
+    if (uni == 0 && serialVisualizerEnabled) {
+      SerialVisualizerSender::send(frame);
+    }
+
     int uniOffset = uni % 3;
     int whichTriangle = uni / 3;
 
@@ -591,6 +617,7 @@ namespace Networking {
       return;
     }
 
+
     // tracking
     universesReceived[uni] = 1;
     universesReceivedTotal[uni] = universesReceivedTotal[uni] + 1;
@@ -673,6 +700,7 @@ void setup()
   Pattern::setup();
   Pattern::intro();
 
+  SerialVisualizerSender::setup();
 
   // @TODO see if we can handle failure in a cleaner way here
   if (useNetwork) {
