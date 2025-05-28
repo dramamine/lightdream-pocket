@@ -59,7 +59,7 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 // i.e. how many strips; Octo board supports 8 channels out
 #define LED_HEIGHT 8
 
-#define version "2025.04"
+#define version "2025.05"
 
 // if true, program expects to be plugged into a network switch. If it's not,
 // it will get stuck at `setup()::artnet.begin()`.
@@ -156,15 +156,16 @@ int layerDescription[13][5] = {
   {1, 999, 6, 5, 0}
 };
 
-int adjustmentLayers[8][13] = {
-  {0, 0, -2, 1, -1, 0, -1, 1, -1, 2, 2, 2, 0}, // default
+int adjustmentLayers[9][13] = {
   {0, -2, -2, -2, -1, -2, -1, -1, -1, 0, 0, 0, 0}, // 4/20/2025 leftward slightly off
+  {0, 0, -2, 1, -1, 0, -1, 1, -1, 2, 2, 2, 0}, // default
+  {0, 0, -1, 1, 0, 1, 2, 4, 2, 5, 5, 5, 3}, // 5/27/2025 guess
+  {0, 0, -1, 0, 0, 1, 3, 3, 4, 6, 7, 7, 7}, //5/27/2025 guess
   {0, 0, -1, 1, 2, 3, 5, 5, 6, 8, 10, 10, 10}, // 4/12/2025 rightward trunk modified
+  {0, 0,  0,  0, 2, 4, 6, 8, 9, 11, 15, 16, 15}, // guess
+  {0, 0,  0,  2, 4, 7, 9, 11, 12, 14, 18, 18, 20}, // guess
   {0, 0,  0,  3, 5, 7, 9, 12, 14, 16, 20, 21, 23}, // 4/16/2025 rightward started 2 lanes early
-  {0, 0, -2, 1, -1, 0, -1, 1, -1, 2, 2, 2, 0}, // default
-  {0, 0, -2, 1, -1, 0, -1, 1, -1, 2, 2, 2, 0}, // default
-  {0, 0, -2, 1, -1, 0, -1, 1, -1, 2, 2, 2, 0}, // default
-  {0, 0, -2, 1, -1, 0, -1, 1, -1, 2, 2, 2, 0}, // default
+  {0, 0,  1,  4, 6, 8, 11, 14, 16, 18, 22, 23, 25}, // 5/27/2025 guess: slightly more
 };
 
 namespace Alignment {
