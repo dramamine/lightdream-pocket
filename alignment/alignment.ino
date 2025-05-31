@@ -169,12 +169,16 @@ int adjustmentLayers[9][13] = {
 };
 
 namespace Alignment {
-  int adjustmentOptions[] = {0, 0, 0, 0, 0, 0, 0, 0};
+  int ALIGNMENT_CHOICES = 9;
+  int alignmentChoice[] = {0, 0, 0, 0, 0, 0, 0, 0};
+  // 0: no alignment pattern
+  // 1-8: show alignment pattern on a single triangle 1-8
+  // 9: show alignment pattern on all triangles
   int alignmentSelection = 0;
 
   int _lookupAdjustment(int layer, int whichTriangle) {
     // which adjustment are we using?
-    int adjIdx = adjustmentOptions[whichTriangle];
+    int adjIdx = alignmentChoice[whichTriangle];
     // if (whichTriangle == 0) {
     //   Serial.printf("Using adjustment index: %d\n", adjIdx);
     // }
@@ -486,8 +490,8 @@ namespace Networking {
     for (int i=0; i<8; i++) {
       int fdx = 495 + i;
       int fval = round(frame[fdx]/16);
-      if (fval < 8) { // max limit for options
-        Alignment::adjustmentOptions[i] = fval;
+      if (fval < Alignment::ALIGNMENT_CHOICES) { // max limit for options
+        Alignment::alignmentChoice[i] = fval;
       } else {
         // Serial.printf("Got value outside acceptable range: %d %d", frame[fdx], fval);
       }
@@ -497,18 +501,20 @@ namespace Networking {
     Alignment::alignmentSelection = round(frame[503] / 16);
     if (oldValue != Alignment::alignmentSelection) {
       Pattern::_blankEverything();
+      Serial.printf("Alignment selection changed from %d to %d\n", oldValue, Alignment::alignmentSelection);
     }
 
-    Serial.printf("My adj options are now: %d %d %d %d %d %d %d %d \n",
-      Alignment::adjustmentOptions[0],
-      Alignment::adjustmentOptions[1],
-      Alignment::adjustmentOptions[2],
-      Alignment::adjustmentOptions[3],
-      Alignment::adjustmentOptions[4],
-      Alignment::adjustmentOptions[5],
-      Alignment::adjustmentOptions[6],
-      Alignment::adjustmentOptions[7]
+    Serial.printf("My alignment choices are now: %d %d %d %d %d %d %d %d \n",
+      Alignment::alignmentChoice[0],
+      Alignment::alignmentChoice[1],
+      Alignment::alignmentChoice[2],
+      Alignment::alignmentChoice[3],
+      Alignment::alignmentChoice[4],
+      Alignment::alignmentChoice[5],
+      Alignment::alignmentChoice[6],
+      Alignment::alignmentChoice[7]
     );
+
 
   }
 
