@@ -159,8 +159,8 @@ int layerDescription[13][5] = {
 int adjustmentLayers[9][13] = {
   {0, -2, -2, -2, -1, -2, -1, -1, -1, 0, 0, 0, 0}, // 4/20/2025 leftward slightly off
   {0, 0, -2, 1, -1, 0, -1, 1, -1, 2, 2, 2, 0}, // default
-  {0, 0, -1, 1, 0, 1, 2, 4, 2, 5, 5, 5, 3}, // 5/27/2025 guess
-  {0, 0, -1, 0, 0, 1, 3, 3, 4, 6, 7, 7, 7}, //5/27/2025 guess
+  {0, -1, -2, -1, 0, 1, 1, 2, 1, 3, 4, 4, 4}, // 5/31/2025 confirmed
+  {0, -1, -2, -1, 0, 1, 2, 3, 2, 5, 5, 6, 5}, // 5/31/2025 confirmed
   {0, 0, -1, 1, 2, 3, 5, 5, 6, 8, 10, 10, 10}, // 4/12/2025 rightward trunk modified
   {0, 0,  0,  0, 2, 4, 6, 8, 9, 11, 15, 16, 15}, // guess
   {0, 0,  0,  2, 4, 7, 9, 11, 12, 14, 18, 18, 20}, // guess
@@ -341,7 +341,7 @@ namespace Pattern {
           // see if LED is within 3 pixels of the midpoint of ledsPerLayer
           int midpoint = ledsPerLayer / 2;
           if (abs(led - midpoint) <= 3) {
-            leds.setPixelColor(ledIdx, getLedColorHSV(led * 10 % 256, 255, BRIGHTNESS));
+            leds.setPixelColor(ledIdx, getLedColorHSV(0, 255, BRIGHTNESS));
             // leds.setPixelColor(ledIdx, getLedColorHSV(0, 255, BRIGHTNESS));
           } else {
             leds.setPixelColor(ledIdx, getLedColorHSV(0, 0, 0)); // set to black
@@ -474,18 +474,18 @@ namespace Networking {
     ctr = 0;
 
     // Serial.printf("update mapping running: %d %d \n", uniOffset, whichTriangle);
-    Serial.printf("My frame values are now: (%d) %d %d %d %d %d %d %d %d (%d) \n",
-      frame[494],
-      frame[495],
-      frame[496],
-      frame[497],
-      frame[498],
-      frame[499],
-      frame[500],
-      frame[501],
-      frame[502],
-      frame[503]
-    );
+    // Serial.printf("My frame values are now: (%d) %d %d %d %d %d %d %d %d (%d) \n",
+    //   frame[494],
+    //   frame[495],
+    //   frame[496],
+    //   frame[497],
+    //   frame[498],
+    //   frame[499],
+    //   frame[500],
+    //   frame[501],
+    //   frame[502],
+    //   frame[503]
+    // );
 
     for (int i=0; i<8; i++) {
       int fdx = 495 + i;
@@ -501,19 +501,19 @@ namespace Networking {
     Alignment::alignmentSelection = round(frame[503] / 16);
     if (oldValue != Alignment::alignmentSelection) {
       Pattern::_blankEverything();
-      Serial.printf("Alignment selection changed from %d to %d\n", oldValue, Alignment::alignmentSelection);
+      // Serial.printf("Alignment selection changed from %d to %d\n", oldValue, Alignment::alignmentSelection);
     }
 
-    Serial.printf("My alignment choices are now: %d %d %d %d %d %d %d %d \n",
-      Alignment::alignmentChoice[0],
-      Alignment::alignmentChoice[1],
-      Alignment::alignmentChoice[2],
-      Alignment::alignmentChoice[3],
-      Alignment::alignmentChoice[4],
-      Alignment::alignmentChoice[5],
-      Alignment::alignmentChoice[6],
-      Alignment::alignmentChoice[7]
-    );
+    // Serial.printf("My alignment choices are now: %d %d %d %d %d %d %d %d \n",
+    //   Alignment::alignmentChoice[0],
+    //   Alignment::alignmentChoice[1],
+    //   Alignment::alignmentChoice[2],
+    //   Alignment::alignmentChoice[3],
+    //   Alignment::alignmentChoice[4],
+    //   Alignment::alignmentChoice[5],
+    //   Alignment::alignmentChoice[6],
+    //   Alignment::alignmentChoice[7]
+    // );
 
 
   }
