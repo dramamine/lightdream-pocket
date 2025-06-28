@@ -16,10 +16,10 @@ those specific libraries but that wasn't working for me, was still trying to loa
 the normal Ethernat library.
 After warming up, this was getting 40 fps with 3 universes.
 
-// 
+//
 
 # strand 0 (orange): 40? leds   backpack top loop, third towards zipper
-# strand 1 (blue):   77  leds   front top area 
+# strand 1 (blue):   77  leds   front top area
 # strand 2 (green):  40? leds   backpack top loop, second towards zipper
 # strand 3 (brown):  33  leds   front bottom area
 # strand 4 (orange): 40? leds   backpack top loop, first towards zipper
@@ -68,7 +68,7 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 #define LED_WIDTH 500
 
 // i.e. how many strips; Octo board supports 8 channels out
-#define LED_HEIGHT 4
+#define LED_HEIGHT 8
 
 // if true, program expects to be plugged into a network switch. If it's not,
 // it will get stuck at `setup()::artnet.begin()`.
@@ -139,7 +139,7 @@ CRGB rgbarray[numLeds];
 CTeensy4Controller<GRB, WS2811_800kHz> *pcontroller;
 
 namespace Pattern {
-  const int BRIGHTNESS = 50; // out of 255
+  const int BRIGHTNESS = 25; // out of 255
 
   void setup() {
     pcontroller = new CTeensy4Controller<GRB, WS2811_800kHz>(&leds);
@@ -165,16 +165,16 @@ namespace Pattern {
     //delay_at_max_brightness_for_power(thisdelay);              // Power managed FastLED delay
   }
 
-  
+
   void _cylon() {
     static uint8_t hue = 0;
     Serial.print("x");
     // First slide the led in one direction
     for(int i = 0; i < numLeds; i++) {
-        // Set the i'th led to red 
+        // Set the i'th led to red
         rgbarray[i] = CHSV(hue++, 255, 255);
         // Show the leds
-        FastLED.show(); 
+        FastLED.show();
         // now that we've shown the leds, reset the i'th led to black
         // leds[i] = CRGB::Black;
         fadeall();
@@ -182,10 +182,10 @@ namespace Pattern {
         delay(10);
     }
     Serial.print("x");
- 
-    // Now go in the other direction.  
+
+    // Now go in the other direction.
     for(int i = (numLeds)-1; i >= 0; i--) {
-        // Set the i'th led to red 
+        // Set the i'th led to red
         rgbarray[i] = CHSV(hue++, 255, 255);
         // Show the leds
         FastLED.show();
@@ -200,33 +200,50 @@ namespace Pattern {
   void _every10() {
     for (int i = 0; i < LED_HEIGHT; i++) {
       for(int j = 9; j < LED_WIDTH; j+=10) {
-          // Set the i'th led to red 
+          // Set the i'th led to red
           rgbarray[j + i*LED_WIDTH] = CHSV(0 + i * 30, 255, 255);
-          FastLED.show(); 
+          FastLED.show();
           delay(100);
       }
     }
   }
- 
+
   void _solid() {
     static uint8_t hue = 0;
 
     for (int i = 0; i < LED_HEIGHT; i++) {
       for(int j = 0; j < LED_WIDTH; j++) {
-          // Set the i'th led to red 
+          // Set the i'th led to red
           rgbarray[j + i*LED_WIDTH] = CHSV(hue, 255, 255);
 
       }
     }
     hue = hue + 3;
-    FastLED.show(); 
+    FastLED.show();
+    delay(100);
+  }
+
+  void _identifier() {
+    static uint8_t hue = 0;
+
+    for (int i = 0; i < LED_HEIGHT; i++) {
+      for(int j = 0; j < LED_WIDTH; j++) {
+        if ((j % (i + 2)) > 0) {
+          rgbarray[j + i*LED_WIDTH] = CHSV(hue + i*30, 255, 255);
+        } else {
+          rgbarray[j + i*LED_WIDTH] = CRGB::Black;
+        }
+      }
+    }
+    hue = hue + 3;
+    FastLED.show();
     delay(100);
   }
 
   void loop()
   {
     // good for stress test
-    _solid();
+    _identifier();
     // good for counting LEDs
     // _every10();
   }

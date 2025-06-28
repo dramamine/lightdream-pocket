@@ -28,10 +28,13 @@ Confirm that you see the correct FPS and you see some data output in the top of 
 
 At this point, you can press Record and Stop to capture your data. Any compression level is fine, but I prefer "ultrafast" for largest file size / less CPU power to play back.
 
+### Helpful Sketches
+"./340x8-noise-pattern.mp4" - 2 unis per output, 8 outputs; good for testing / demo
+
 
 ### Converting Lightjams Output to SD Card Format
 
-From this folder:
+From this folder, using `cmd` shell:
 
 ```sh
 cd artnet-to-sd-card

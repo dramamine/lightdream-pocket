@@ -1,18 +1,47 @@
 import cv2
 import math
+import argparse
+import time
+import re
 USE_GRB = False
 
-sequence_path = "./170x8-velvet-backpack-content.mp4"
-output_file_path = "L:\output.bin"
+parser = argparse.ArgumentParser(description="Convert video to SD card format for LEDs.")
+parser.add_argument("--sequence_path", type=str, default="./340x8-noise-pattern.mp4", help="Path to the input video file.")
+parser.add_argument("--use_dimensions", type=str, default="170x8", help="Dimensions of the LED matrix in format WIDTHxHEIGHT.")
+parser.add_argument("--fps", type=float, default=40.0, help="Frames per second for the output video.")
+parser.add_argument("--output_file_path", type=str, default="L:/output.bin", help="Path to the output binary file.")
+args = parser.parse_args()
+
+#TODO read dimensions from filename, if available
+
+
+sequence_path = args.sequence_path
+output_file_path = args.output_file_path
+
+
+if args.use_dimensions:
+    use_dimensions = args.use_dimensions
+else:
+  match = re.match(r"./(\d+)x(\d+).*", args.sequence_path)
+  if match:
+    use_dimensions = f"{match.group(1)}x{match.group(2)}"
+  else:
+    use_dimensions = "170x8"
+
+width_str, height_str = use_dimensions.split('x')
+WIDTH = int(width_str)
+HEIGHT = int(height_str)
+
+print(f"Using dimensions: WIDTH={WIDTH}, HEIGHT={HEIGHT}")
 
 # NOTE: make sure the teensy has these same values for width and height
 #
 # how many LEDs of data do we read from each video row?
 # this number is 170 maximum (510 bytes per row / 3 bytes per pixel)
-WIDTH = 170
+# WIDTH = 170
 # i.e. number of outputs used by the Teensy.
 # just plan things to use 8 rows and you'll be happy
-HEIGHT = 8
+# HEIGHT = 8
 FPS = 40.0
 
 def to_array(rows):
@@ -63,7 +92,7 @@ class SequencePlayer:
     assert self.height % HEIGHT == 0, f"Video has wrong height {self.height} for specified # of outputs {HEIGHT}"
 
     self.video_rows_per_led_row = int(self.height / HEIGHT)
-    print("video rows per led row:", self.video_rows_per_led_row)
+    print("video rows (universes) per led row:", self.video_rows_per_led_row)
 
 
 
@@ -148,9 +177,17 @@ class Video2SDCard:
 
 
 if __name__ == "__main__":
+  # Create a timer
+
+  start_time = time.time()
+
   output_file = open(output_file_path, "wb")
   x = Video2SDCard(output_file)
 
   x.write_frames()
   x.write_eof_header()
   output_file.close()
+
+  end_time = time.time()
+  elapsed_time = end_time - start_time
+  print(f"Finished writing {x.sp.framecount} frames in {elapsed_time:.2f} seconds")
