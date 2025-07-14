@@ -7,7 +7,7 @@ USE_GRB = False
 
 parser = argparse.ArgumentParser(description="Convert video to SD card format for LEDs.")
 parser.add_argument("--sequence_path", type=str, default="./340x8-noise-pattern.mp4", help="Path to the input video file.")
-parser.add_argument("--use_dimensions", type=str, default="170x8", help="Dimensions of the LED matrix in format WIDTHxHEIGHT.")
+parser.add_argument("--use_dimensions", type=str, help="Dimensions of the LED matrix in format WIDTHxHEIGHT.")
 parser.add_argument("--fps", type=float, default=40.0, help="Frames per second for the output video.")
 parser.add_argument("--output_file_path", type=str, default="L:/output.bin", help="Path to the output binary file.")
 args = parser.parse_args()
@@ -22,11 +22,11 @@ output_file_path = args.output_file_path
 if args.use_dimensions:
     use_dimensions = args.use_dimensions
 else:
-  match = re.match(r"./(\d+)x(\d+).*", args.sequence_path)
+  match = re.match(r".*\/(\d+)x(\d+).*", args.sequence_path)
   if match:
     use_dimensions = f"{match.group(1)}x{match.group(2)}"
   else:
-    use_dimensions = "170x8"
+    use_dimensions = "170x8" # default
 
 width_str, height_str = use_dimensions.split('x')
 WIDTH = int(width_str)
