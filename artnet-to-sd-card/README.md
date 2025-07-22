@@ -31,7 +31,6 @@ At this point, you can press Record and Stop to capture your data. Any compressi
 ### Helpful Sketches
 "./340x8-noise-pattern.mp4" - 2 unis per output, 8 outputs; good for testing / demo
 
-
 ### Converting Lightjams Output to SD Card Format
 
 From this folder, using `cmd` shell:
@@ -39,6 +38,7 @@ From this folder, using `cmd` shell:
 ```sh
 cd artnet-to-sd-card
 C:\Python311\python.exe video2sdcard.py
+C:\Python311\python.exe video2sdcard.py --sequence_path "./510x8-corset-test.mp4"
 ```
 
 ```bash
