@@ -69,7 +69,7 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 // it will get stuck at `setup()::artnet.begin()`.
 // ## Troubleshooting the network
 // If you see "Link status (should be 2)"
-bool useNetwork = true;
+bool useNetwork = false;
 
 // how many strips? Octo board supports 8 data channels out
 // const byte LED_HEIGHT = 4;        // change for your setup

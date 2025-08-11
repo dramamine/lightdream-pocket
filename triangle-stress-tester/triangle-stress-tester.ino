@@ -1,34 +1,6 @@
 /*
-Identify each strand on the octo board by lighting them up in a pattern.
-
-The MIT License (MIT)
-
-Copyright (c) 2018-2023 Marten Silbiger
-https://github.com/dramamine/lightdream-scripts
-
-Copyright (c) 2014 Nathanaël Lécaudé
-https://github.com/natcl/Artnet, http://forum.pjrc.com/threads/24688-Artnet-to-OctoWS2811
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-
-Resources:
-https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
+i.e. "octo-identifier" plus we do a more intense pattern on the first strip.
+Trying to see if any LEDs start glitching out there.
 
 */
 
@@ -109,7 +81,7 @@ CRGB rgbarray[numLeds];
 CTeensy4Controller<GRB, WS2811_800kHz> *pcontroller;
 
 namespace Pattern {
-  const int BRIGHTNESS = 25; // out of 255
+  const int BRIGHTNESS = 255; // out of 255
 
   void setup() {
     pcontroller = new CTeensy4Controller<GRB, WS2811_800kHz>(&leds);
@@ -198,7 +170,10 @@ namespace Pattern {
 
     for (int i = 0; i < LED_HEIGHT; i++) {
       for(int j = 0; j < LED_WIDTH; j++) {
-        if ((j % (i + 2)) > 0) {
+        // stress test
+        if (i == 0) {
+           rgbarray[j + i*LED_WIDTH] = CRGB::White;
+        } else if ((j % (i + 2)) > 0) {
           rgbarray[j + i*LED_WIDTH] = CHSV(hue + i*30, 255, 255);
         } else {
           rgbarray[j + i*LED_WIDTH] = CRGB::Black;
@@ -223,7 +198,7 @@ void setup()
 {
   Serial.begin(115200);
   delay(2000);
-  Serial.println("INFO:   Filename: octo-identifier");
+  Serial.println("INFO:   Filename: triangle-stress-tester");
   Serial.println("INFO:   Version: 2025.07");
   Serial.printf("INFO:   LED counter: %d pixels, %d LEDs \n", leds.numPixels(), numLeds);
   Serial.println();
