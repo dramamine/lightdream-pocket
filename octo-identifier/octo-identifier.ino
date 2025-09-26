@@ -37,7 +37,7 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 #include <FastLED.h>
 
 // i.e. LEDs per output.
-#define LED_WIDTH 1000
+#define LED_WIDTH 1024
 
 // i.e. how many strips; Octo board supports 8 channels out
 #define LED_HEIGHT 8
