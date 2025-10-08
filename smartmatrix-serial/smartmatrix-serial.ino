@@ -84,7 +84,7 @@ const uint8_t kPanelType = SM_PANELTYPE_HUB75_32ROW_MOD16SCAN;   // Choose the c
 const uint32_t kMatrixOptions = (SM_HUB75_OPTIONS_NONE);        // see docs for options: https://github.com/pixelmatix/SmartMatrix/wiki
 const uint8_t kBackgroundLayerOptions = (SM_BACKGROUND_OPTIONS_NONE);
 
-const int maxUniverses = 49; // set later
+const int maxUniverses = 73; // Updated to match Artnet sender
 const int numLeds = kMatrixWidth * kMatrixHeight;
 
 SMARTMATRIX_ALLOCATE_BUFFERS(matrix, kMatrixWidth, kMatrixHeight, kRefreshDepth, kDmaBufferRows, kPanelType, kMatrixOptions);
@@ -99,186 +99,174 @@ byte timeOffset = 0;
 
 namespace Networking {
 
-  // Change ip for your setup, last octet is changed in updateIp()
-  byte _ip[] = {169, 254, 18, 0};
-  byte _fakemac[] = {0x04, 0xE9, 0xE5, 0x00, 0x69, 0xEC};
+  // OPC (Open Pixel Control) protocol variables
+  static uint8_t opcBuffer[4 + (numLeds * 3)]; // 4-byte header + pixel data
+  static int opcBufferPos = 0;
+  static bool opcFrameReady = false;
+  static uint32_t frameCount = 0;
+  static uint32_t _frameMs = 0;
 
-  // have we received data for each universe?
-  bool universesReceived[maxUniverses];
+  void updateLeds() {
+    // Process OPC frame data (skip 4-byte header)
+    uint8_t *pixelData = &opcBuffer[4];
 
-  // for calculating data received rates
-  int universesReceivedTotal[maxUniverses];
-  bool sendFrame = 1;
+    for (int led = 0; led < numLeds; led++) {
+      // Calculate x,y coordinates from linear LED index
+      uint16_t x = led % kMatrixWidth;
+      uint16_t y = led / kMatrixWidth;
 
-  // true once we have received an Artnet packet
-  bool hasReceivedArtnetPacket = false;
+      // Read RGB data for this pixel
+      uint8_t r = pixelData[led * 3];
+      uint8_t g = pixelData[led * 3 + 1];
+      uint8_t b = pixelData[led * 3 + 2];
 
-  // frame time in ms, using millis()
-  uint32_t _frameMs = 0;
-
-
-  void updateLeds(int uni) {
-    uint8_t *frame = artnet.getDmxFrame();
-    int length = artnet.getLength();
-
-    for (int i = 0; i < length / 3; i++)
-    {
-      int led = i + uni * ledsPerUniverse;
-      if (led < numLeds)
-      {
-        // Calculate x,y coordinates from linear LED index
-        uint16_t x = led % kMatrixWidth;
-        uint16_t y = led / kMatrixWidth;
-
-        // Write directly to matrix background layer
-        uint8_t r = frame[i * 3];
-        uint8_t g = frame[i * 3 + 1];
-        uint8_t b = frame[i * 3 + 2];
-
-        backgroundLayer.drawPixel(x, y, rgb24(r, g, b));
-      }
+      // Write directly to matrix background layer
+      backgroundLayer.drawPixel(x, y, rgb24(r, g, b));
     }
   }
 
   // https://www.arduino.cc/reference/en/libraries/ethernet/
   void setup()
   {
-    // Networking::updateIp();
-
-    if (Ethernet.hardwareStatus() == EthernetNoHardware) {
-      Serial.println("ERROR:  Ethernet shield was not found.");
-    }
-    else if (Ethernet.hardwareStatus() == EthernetW5100) {
-      Serial.println("INFO:  W5100 Ethernet controller detected.");
-    }
-    else if (Ethernet.hardwareStatus() == EthernetW5200) {
-      Serial.println("INFO:   W5200 Ethernet controller detected.");
-    }
-    else if (Ethernet.hardwareStatus() == EthernetW5500) {
-      Serial.println("INFO:   W5500 Ethernet controller detected.");
-    }
-
-    Serial.println("INFO:   Setting up Artnet via Ethernet cable...");
-    Serial.printf("INFO:   Link status (should be 2): %d\n", Ethernet.linkStatus());
-    if (Ethernet.linkStatus() != 2) {
-      Serial.println("ERROR:  Something wrong with link status. Make sure your Ethernet kit is installed properly.");
-      Serial.println("ERROR:  https://www.pjrc.com/store/ethernet_kit.html");
-      Serial.println("ERROR:  Turning networking requirement off.");
-      useNetwork = false;
-      return;
-    }
-
-    Serial.println("STATUS: Connected to network switch.");
-    artnet.begin(_fakemac, _ip);
-
-    Serial.println("STATUS: Listening for Artnet data.");
-    Serial.print("INFO:   Local ip: ");
-    Serial.println(Ethernet.localIP());
+    Serial.println("STATUS: Listening for OPC data on Serial port.");
+    opcBufferPos = 0;
+    opcFrameReady = false;
   }
 
 
-  // print fps and how many frames we've received from each universe. this
-  // prints incrementally (every 100 frames, when universe 0 is received)
+  // print fps for OPC frames
   void printFps() {
-    int uni = artnet.getUniverse();
-    if (uni == 0 && universesReceivedTotal[0] % 100 == 0) {
+    if (frameCount % 100 == 0) {
       // check timing, do fps
       uint32_t currentTiming = millis();
       if (_frameMs > 0)
       {
         float fps = 100000. / (currentTiming - _frameMs);
-        Serial.printf("PERF:   %2.2f fps.  ", fps);
+        Serial.printf("PERF:   %2.2f fps, frame count: %lu\n", fps, frameCount);
       }
       _frameMs = currentTiming;
-
-      // print how many frames we got from each universe
-      for (int i = 0; i < maxUniverses; i++)
-      {
-        Serial.print(i);
-        Serial.print(": ");
-        //float pct = 100 * universesReceivedTotal[i] / universesReceivedTotal[0];
-        float pct = universesReceivedTotal[i];
-        Serial.print(pct, 2);
-        Serial.print(" ");
-      }
-      Serial.print("\n");
     }
   }
 
-  void handleDmxFrame()
-  {
-    int uni = artnet.getUniverse();
-    // Serial.println(uni);
+  // void handleDmxFrame()
+  // {
+  //   int uni = artnet.getUniverse();
+  //   // Serial.println(uni);
 
-    if (uni >= maxUniverses) {
-      return;
-    }
+  //   if (uni >= maxUniverses) {
+  //     return;
+  //   }
 
-    // tracking
-    universesReceived[uni] = 1;
-    universesReceivedTotal[uni] = universesReceivedTotal[uni] + 1;
+  //   // tracking
+  //   universesReceived[uni] = 1;
+  //   universesReceivedTotal[uni] = universesReceivedTotal[uni] + 1;
 
-    if (showFps) {
-      Networking::printFps();
-    }
+  //   if (showFps) {
+  //     Networking::printFps();
+  //   }
 
-    // flash LED along with received data
-    if (uni == 0 && universesReceivedTotal[0] % 30 == 0) {
-      if (uni == 0 && universesReceivedTotal[0] % 60 == 0) {
-        digitalWrite(LED_BUILTIN, HIGH);
-      } else {
-        digitalWrite(LED_BUILTIN, LOW);
-      }
-    }
+  //   // flash LED along with received data
+  //   if (uni == 0 && universesReceivedTotal[0] % 30 == 0) {
+  //     if (uni == 0 && universesReceivedTotal[0] % 60 == 0) {
+  //       digitalWrite(LED_BUILTIN, HIGH);
+  //     } else {
+  //       digitalWrite(LED_BUILTIN, LOW);
+  //     }
+  //   }
 
-    // how many microseconds to perform these operations for one Artnet frame?
-    if (showTiming) {
-      uint32_t beginTime = micros();
-      updateLeds(uni);
-      uint32_t elapsedTime = micros() - beginTime;
-      Serial.printf("PERF:   elapsed microseconds: %lu \n", elapsedTime);
-    } else {
-      updateLeds(uni);
-    }
+  //   // how many microseconds to perform these operations for one Artnet frame?
+  //   if (showTiming) {
+  //     uint32_t beginTime = micros();
+  //     updateLeds(uni);
+  //     uint32_t elapsedTime = micros() - beginTime;
+  //     Serial.printf("PERF:   elapsed microseconds: %lu \n", elapsedTime);
+  //   } else {
+  //     updateLeds(uni);
+  //   }
 
-    // if we've received data for each universe, call leds.show()
+  //   // if we've received data for each universe, call leds.show()
 
-    sendFrame = 1;
-    for (int i = 0; i < maxUniverses; i++)
-    {
-      if (universesReceived[i] == 0)
-      {
-        // Serial.printf("sendFrame is 0 on universe: %d (of %d)\n", i, maxUniverses);
-        sendFrame = 0;
-        break;
-      }
-    }
+  //   sendFrame = 1;
+  //   for (int i = 0; i < maxUniverses; i++)
+  //   {
+  //     if (universesReceived[i] == 0)
+  //     {
+  //       // Serial.printf("sendFrame is 0 on universe: %d (of %d)\n", i, maxUniverses);
+  //       sendFrame = 0;
+  //       break;
+  //     }
+  //   }
 
-    if (sendFrame)
-    {
-      // All pixels have been written directly to matrix during updateLeds calls
-      backgroundLayer.swapBuffers();
-      memset(universesReceived, 0, maxUniverses);
-    }
-  }
+  //   if (sendFrame)
+  //   {
+  //     // All pixels have been written directly to matrix during updateLeds calls
+  //     backgroundLayer.swapBuffers();
+  //     memset(universesReceived, 0, maxUniverses);
+  //   }
+  // }
   void loop() {
-    if (useNetwork) {
-      uint16_t r = artnet.read();
-      if (r == ART_DMX) {
-        // system state update
-        if (!Networking::hasReceivedArtnetPacket)
-        {
-          Serial.println("STATUS: Receiving Artnet data.");
-          Networking::hasReceivedArtnetPacket = true;
-          // black out each LED
-          // for (int i = 0; i < numLeds; i++)
-          // {
-          //   leds.setPixel(i, 0, 0, 0);
-          // }
-          // leds.show();
-        }
+    // Read OPC (Open Pixel Control) data from Serial
+    while (Serial.available() > 0) {
+      uint8_t incomingByte = Serial.read();
 
-        Networking::handleDmxFrame();
+      // Add byte to buffer
+      if (opcBufferPos < sizeof(opcBuffer)) {
+        opcBuffer[opcBufferPos++] = incomingByte;
+
+        // Check if we have at least the 4-byte header
+        if (opcBufferPos >= 4) {
+          // Parse OPC header: [channel][command][length_hi][length_lo]
+          uint8_t channel = opcBuffer[0];
+          uint8_t command = opcBuffer[1];
+          uint16_t length = (opcBuffer[2] << 8) | opcBuffer[3];
+
+          // Expected frame size: header + pixel data
+          uint16_t expectedFrameSize = 4 + length;
+
+          // Check if we have a complete frame
+          if (opcBufferPos >= expectedFrameSize) {
+            // Validate the frame
+            if (command == 0 && length == (numLeds * 3)) {
+              // Valid OPC frame with correct pixel count
+              opcFrameReady = true;
+              frameCount++;
+
+              // Flash LED to indicate data received
+              if (frameCount % 30 == 0) {
+                digitalWrite(LED_BUILTIN, (frameCount % 60 == 0) ? HIGH : LOW);
+              }
+
+              // Process the frame
+              if (showTiming) {
+                uint32_t beginTime = micros();
+                updateLeds();
+                uint32_t elapsedTime = micros() - beginTime;
+                Serial.printf("PERF:   elapsed microseconds: %lu \n", elapsedTime);
+              } else {
+                updateLeds();
+              }
+
+              // Update display
+              backgroundLayer.swapBuffers();
+
+              if (showFps) {
+                printFps();
+              }
+
+              opcFrameReady = false;
+            } else {
+              Serial.printf("Invalid OPC frame: cmd=%d, length=%d (expected %d)\n",
+                           command, length, numLeds * 3);
+            }
+
+            // Reset buffer for next frame
+            opcBufferPos = 0;
+          }
+        }
+      } else {
+        // Buffer overflow - reset and try again
+        Serial.println("OPC buffer overflow, resetting");
+        opcBufferPos = 0;
       }
     }
   }
@@ -290,6 +278,7 @@ void setup()
   delay(2000);
   Serial.printf("INFO:   Version: %s\n", version);
   Serial.printf("INFO:   Matrix dimensions: %dx%d pixels \n", kMatrixWidth, kMatrixHeight);
+  Serial.printf("INFO:   Expected OPC data size: %d bytes per frame\n", 4 + (numLeds * 3));
   Serial.println();
 
   // Initialize SmartMatrix
@@ -303,23 +292,12 @@ void setup()
 
   Serial.println("SmartMatrix initialized");
 
-  // @TODO see if we can handle failure in a cleaner way here
-  if (useNetwork) {
-    Networking::setup();
-  }
+  Networking::setup();
 }
 
 
 
 void loop()
 {
-  if (useNetwork) {
-    Networking::loop();
-  }
-
-
-  // if (!Networking::hasReceivedArtnetPacket)
-  // {
-  //   Pattern::loop();
-  // }
+  Networking::loop();
 }
