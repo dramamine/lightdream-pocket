@@ -342,7 +342,8 @@ def main():
                         last_status_time = time.time()
             else:
                 # Timeout - no Artnet data received
-                print("No Artnet data received in 1 second...")
+                # print("No Artnet data received in 1 second...")
+                pass
 
     except KeyboardInterrupt:
         print("\nStopping bridge...")

@@ -17,9 +17,6 @@ The MIT License (MIT)
 Copyright (c) 2018-2025 Marten Silbiger
 https://github.com/dramamine/lightdream-pocket
 
-Copyright (c) 2014 Nathanaël Lécaudé
-https://github.com/natcl/Artnet, http://forum.pjrc.com/threads/24688-Artnet-to-OctoWS2811
-
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
@@ -42,9 +39,6 @@ Resources:
 https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 
 */
-// for the artnet library to load the right ethernet stuff.
-// due to edits I made, it now loads NativeEthernet and NativeEthernetUDP
-#include "Artnet.h"
 #include <SPI.h>
 #include <OctoWS2811.h>
 #include "TeensyID.h"
@@ -54,15 +48,9 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 
 #define version "2025.10"
 
-// if true, program expects to be plugged into a network switch. If it's not,
-// it will get stuck at `setup()::artnet.begin()`.
 // ## Troubleshooting the network
 // If you see "Link status (should be 2)"
 bool useNetwork = true;
-
-// make sure the config above is correct for your setup. we expect the controlling
-// software  to send (LED_HEIGHT * universesPerStrip) universes to this IP.
-const int ledsPerUniverse = 170;
 
 // Send fps timing to Serial out, should be around 40 fps
 bool showFps = false;
@@ -84,18 +72,12 @@ const uint8_t kPanelType = SM_PANELTYPE_HUB75_32ROW_MOD16SCAN;   // Choose the c
 const uint32_t kMatrixOptions = (SM_HUB75_OPTIONS_NONE);        // see docs for options: https://github.com/pixelmatix/SmartMatrix/wiki
 const uint8_t kBackgroundLayerOptions = (SM_BACKGROUND_OPTIONS_NONE);
 
-const int maxUniverses = 73; // Updated to match Artnet sender
 const int numLeds = kMatrixWidth * kMatrixHeight;
 
 SMARTMATRIX_ALLOCATE_BUFFERS(matrix, kMatrixWidth, kMatrixHeight, kRefreshDepth, kDmaBufferRows, kPanelType, kMatrixOptions);
 SMARTMATRIX_ALLOCATE_BACKGROUND_LAYER(backgroundLayer, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kBackgroundLayerOptions);
 
-// Artnet settings
-Artnet artnet;
-
 byte timeOffset = 0;
-
-
 
 namespace Networking {
 
@@ -148,62 +130,6 @@ namespace Networking {
     }
   }
 
-  // void handleDmxFrame()
-  // {
-  //   int uni = artnet.getUniverse();
-  //   // Serial.println(uni);
-
-  //   if (uni >= maxUniverses) {
-  //     return;
-  //   }
-
-  //   // tracking
-  //   universesReceived[uni] = 1;
-  //   universesReceivedTotal[uni] = universesReceivedTotal[uni] + 1;
-
-  //   if (showFps) {
-  //     Networking::printFps();
-  //   }
-
-  //   // flash LED along with received data
-  //   if (uni == 0 && universesReceivedTotal[0] % 30 == 0) {
-  //     if (uni == 0 && universesReceivedTotal[0] % 60 == 0) {
-  //       digitalWrite(LED_BUILTIN, HIGH);
-  //     } else {
-  //       digitalWrite(LED_BUILTIN, LOW);
-  //     }
-  //   }
-
-  //   // how many microseconds to perform these operations for one Artnet frame?
-  //   if (showTiming) {
-  //     uint32_t beginTime = micros();
-  //     updateLeds(uni);
-  //     uint32_t elapsedTime = micros() - beginTime;
-  //     Serial.printf("PERF:   elapsed microseconds: %lu \n", elapsedTime);
-  //   } else {
-  //     updateLeds(uni);
-  //   }
-
-  //   // if we've received data for each universe, call leds.show()
-
-  //   sendFrame = 1;
-  //   for (int i = 0; i < maxUniverses; i++)
-  //   {
-  //     if (universesReceived[i] == 0)
-  //     {
-  //       // Serial.printf("sendFrame is 0 on universe: %d (of %d)\n", i, maxUniverses);
-  //       sendFrame = 0;
-  //       break;
-  //     }
-  //   }
-
-  //   if (sendFrame)
-  //   {
-  //     // All pixels have been written directly to matrix during updateLeds calls
-  //     backgroundLayer.swapBuffers();
-  //     memset(universesReceived, 0, maxUniverses);
-  //   }
-  // }
   void loop() {
     // Read OPC (Open Pixel Control) data from Serial
     while (Serial.available() > 0) {
