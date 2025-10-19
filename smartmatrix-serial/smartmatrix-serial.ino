@@ -60,13 +60,21 @@ bool showFps = false;
 // LD algorithm Q3-2023 was running 15-17us for 8-universe code
 bool showTiming = false;
 
+// Advanced visual enhancement options
+bool enableFrameInterpolation = true;   // Smooth motion between frames
+bool enableTemporalDithering = true;    // Better color depth using temporal dithering
+bool enableGammaCorrection = false;      // Perceptually correct brightness
+float gammaValue = 2.2;                 // Standard gamma correction
+bool enableColorBoost = false;           // Enhance color saturation
+float colorBoostFactor = 1.2;           // Color saturation multiplier
+
 
 // ~~ end config ~~
 
 #define COLOR_DEPTH 24                  // Choose the color depth used for storing pixels in the layers: 24 or 48 (24 is good for most sketches - If the sketch uses type `rgb24` directly, COLOR_DEPTH must be 24)
 const uint16_t kMatrixWidth = 64;       // Set to the width of your display, must be a multiple of 8
 const uint16_t kMatrixHeight = 64*3;      // Set to the height of your display
-const uint8_t kRefreshDepth = 24;       // Tradeoff of color quality vs refresh rate, max brightness, and RAM usage.  36 is typically good, drop down to 24 if you need to.  On Teensy, multiples of 3, up to 48: 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48.  On ESP32: 24, 36, 48
+const uint8_t kRefreshDepth = 36;       // Higher refresh depth for better color quality at high refresh rates. 36 is typically good, drop down to 24 if you need to.  On Teensy, multiples of 3, up to 48: 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48.  On ESP32: 24, 36, 48
 const uint8_t kDmaBufferRows = 4;       // known working: 2-4, use 2 to save RAM, more to keep from dropping frames and automatically lowering refresh rate.  (This isn't used on ESP32, leave as default)
 const uint8_t kPanelType = SM_PANELTYPE_HUB75_32ROW_MOD16SCAN;   // Choose the configuration that matches your panels.  See more details in MatrixCommonHub75.h and the docs: https://github.com/pixelmatix/SmartMatrix/wiki
 const uint32_t kMatrixOptions = (SM_HUB75_OPTIONS_NONE);        // see docs for options: https://github.com/pixelmatix/SmartMatrix/wiki
@@ -88,22 +96,148 @@ namespace Networking {
   static uint32_t frameCount = 0;
   static uint32_t _frameMs = 0;
 
+  // Advanced visual enhancement buffers
+  static uint8_t previousFrame[numLeds * 3];    // Previous frame for interpolation
+  static uint8_t currentFrame[numLeds * 3];     // Current frame buffer
+  static bool hasPreviousFrame = false;
+  static uint32_t lastFrameTime = 0;
+  static uint32_t frameInterval = 33;           // Expected ms between frames (30fps = 33ms)
+  static uint8_t ditherCounter = 0;             // For temporal dithering
+
+  // Gamma correction lookup table (computed once)
+  static uint8_t gammaLUT[256];
+  static bool gammaLUTInitialized = false;
+
+  void initializeGammaLUT() {
+    if (!gammaLUTInitialized) {
+      for (int i = 0; i < 256; i++) {
+        float normalized = i / 255.0;
+        float corrected = pow(normalized, gammaValue);
+        gammaLUT[i] = (uint8_t)(corrected * 255);
+      }
+      gammaLUTInitialized = true;
+    }
+  }
+
+  uint8_t applyGamma(uint8_t value) {
+    return enableGammaCorrection ? gammaLUT[value] : value;
+  }
+
+  uint8_t enhanceColor(uint8_t value) {
+    if (!enableColorBoost) return value;
+
+    float enhanced = (value / 255.0);
+    enhanced = pow(enhanced, 1.0 / colorBoostFactor); // Boost saturation
+    enhanced = enhanced * 255.0;
+
+    return (uint8_t)constrain(enhanced, 0, 255);
+  }
+
+  uint8_t interpolateValue(uint8_t prev, uint8_t curr, float alpha) {
+    return (uint8_t)(prev * (1.0 - alpha) + curr * alpha);
+  }
+
+  uint8_t applyTemporalDither(uint8_t value, int pixelIndex) {
+    if (!enableTemporalDithering) return value;
+
+    // Keep black pixels black - don't dither pure black
+    // if (value == 0) return 0;
+
+    // Keep pure white pixels white - don't dither pure white
+    if (value == 255) return 255;
+
+    // Only apply dithering to mid-range values where it helps
+    if (value < 4) return value; // Protect very dark pixels (reduced threshold)
+
+    // Enhanced temporal dithering pattern with more cycles
+    uint8_t dither = ((pixelIndex * 3 + ditherCounter) & 0x07); // 8-frame cycle for more variation
+
+    // Increase dither strength based on pixel value
+    int ditherAmount;
+    if (value < 32) {
+      // Small dither for dark values
+      ditherAmount = (dither >> 1) - 1; // -1 to +2 range
+    } else if (value < 128) {
+      // Medium dither for mid values
+      ditherAmount = dither - 3; // -3 to +4 range
+    } else {
+      // Stronger dither for bright values
+      ditherAmount = (dither - 3) * 1.5; // -4.5 to +6 range (scaled)
+    }
+
+    int dithered = value + ditherAmount;
+    return (uint8_t)constrain(dithered, 0, 255);
+  }
+
   void updateLeds() {
+    // Initialize gamma LUT if needed
+    if (enableGammaCorrection && !gammaLUTInitialized) {
+      initializeGammaLUT();
+    }
+
     // Process OPC frame data (skip 4-byte header)
     uint8_t *pixelData = &opcBuffer[4];
+    uint32_t currentTime = millis();
 
+    // Copy new frame data and apply initial processing
+    for (int i = 0; i < numLeds * 3; i++) {
+      currentFrame[i] = pixelData[i];
+    }
+
+    // Calculate interpolation factor for smooth motion
+    float interpAlpha = 1.0;
+    if (enableFrameInterpolation && hasPreviousFrame) {
+      uint32_t timeSinceLastFrame = currentTime - lastFrameTime;
+      if (timeSinceLastFrame < frameInterval * 2) { // Only interpolate if frame timing is reasonable
+        interpAlpha = min(1.0, (float)timeSinceLastFrame / frameInterval);
+      }
+    }
+
+    // Update dither counter for temporal dithering
+    ditherCounter = (ditherCounter + 1) & 0xFF;
+
+    // Process each pixel with enhancements
     for (int led = 0; led < numLeds; led++) {
       // Calculate x,y coordinates from linear LED index
       uint16_t x = led % kMatrixWidth;
       uint16_t y = led / kMatrixWidth;
 
-      // Read RGB data for this pixel
-      uint8_t r = pixelData[led * 3];
-      uint8_t g = pixelData[led * 3 + 1];
-      uint8_t b = pixelData[led * 3 + 2];
+      // Get current pixel RGB
+      uint8_t r = currentFrame[led * 3];
+      uint8_t g = currentFrame[led * 3 + 1];
+      uint8_t b = currentFrame[led * 3 + 2];
 
-      // Write directly to matrix background layer
+      // Apply frame interpolation for smooth motion
+      if (enableFrameInterpolation && hasPreviousFrame && interpAlpha < 1.0) {
+        r = interpolateValue(previousFrame[led * 3], r, interpAlpha);
+        g = interpolateValue(previousFrame[led * 3 + 1], g, interpAlpha);
+        b = interpolateValue(previousFrame[led * 3 + 2], b, interpAlpha);
+      }
+
+      // Apply color enhancement
+      r = enhanceColor(r);
+      g = enhanceColor(g);
+      b = enhanceColor(b);
+
+      // Apply gamma correction
+      r = applyGamma(r);
+      g = applyGamma(g);
+      b = applyGamma(b);
+
+      // Apply temporal dithering for better color depth
+      r = applyTemporalDither(r, led);
+      g = applyTemporalDither(g, led);
+      b = applyTemporalDither(b, led);
+
+      // Write to matrix background layer
       backgroundLayer.drawPixel(x, y, rgb24(r, g, b));
+    }
+
+    // Store current frame as previous frame for next interpolation
+    if (enableFrameInterpolation) {
+      memcpy(previousFrame, currentFrame, numLeds * 3);
+      hasPreviousFrame = true;
+      lastFrameTime = currentTime;
     }
   }
 
@@ -205,6 +339,12 @@ void setup()
   Serial.printf("INFO:   Version: %s\n", version);
   Serial.printf("INFO:   Matrix dimensions: %dx%d pixels \n", kMatrixWidth, kMatrixHeight);
   Serial.printf("INFO:   Expected OPC data size: %d bytes per frame\n", 4 + (numLeds * 3));
+  Serial.printf("INFO:   Refresh depth: %d-bit (higher = better color)\n", kRefreshDepth);
+  Serial.printf("INFO:   Visual enhancements:\n");
+  Serial.printf("        - Frame interpolation: %s\n", enableFrameInterpolation ? "ON" : "OFF");
+  Serial.printf("        - Temporal dithering: %s\n", enableTemporalDithering ? "ON" : "OFF");
+  Serial.printf("        - Gamma correction: %s (%.1f)\n", enableGammaCorrection ? "ON" : "OFF", gammaValue);
+  Serial.printf("        - Color boost: %s (%.1fx)\n", enableColorBoost ? "ON" : "OFF", colorBoostFactor);
   Serial.println();
 
   // Initialize SmartMatrix
