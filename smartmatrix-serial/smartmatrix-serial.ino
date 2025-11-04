@@ -41,7 +41,6 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 */
 #include <SPI.h>
 #include <OctoWS2811.h>
-#include "TeensyID.h"
 #include <MatrixHardware_Teensy4_ShieldV5.h>        // SmartLED Shield for Teensy 4 (V5)
 #include <SmartMatrix.h>
 #include <Wire.h>

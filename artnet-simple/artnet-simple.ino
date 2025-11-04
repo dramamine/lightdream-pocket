@@ -2,6 +2,7 @@
 Accept Artnet data and display it, through an OctoWS2811 / Teensy / Wiz850io
 
 Be sure to set some configuration values below so that universes line up.
+// IP address should be 169.254.18.0
 
 In Resolume -> Advanced Output, do Auto Span on the lumiverse.
 
@@ -50,12 +51,12 @@ https://www.pjrc.com/teensy/td_libs_OctoWS2811.html
 #include "TeensyID.h"
 
 // i.e. LEDs per output.
-#define LED_WIDTH 1024
+#define LED_WIDTH 170
 
 // i.e. how many strips; Octo board supports 8 channels out
-#define LED_HEIGHT 1
+#define LED_HEIGHT 8
 
-#define version "2025.07"
+#define version "2025.10"
 
 // if true, program expects to be plugged into a network switch. If it's not,
 // it will get stuck at `setup()::artnet.begin()`.
@@ -81,7 +82,7 @@ bool serialVisualizerEnabled = true;
 // ~~ end config ~~
 
 // how many universes per strip?
-const int universesPerStrip = 7;
+const int universesPerStrip = 1;
 
 const int maxUniverses = LED_HEIGHT * universesPerStrip;
 

@@ -90,7 +90,7 @@ int drawingMemory[ledsPerStrip*6];
 elapsedMicros elapsedSinceLastFrame = 0;
 bool playing = false;
 
-const int config = WS2811_GRB | WS2811_800kHz;
+const int config = WS2811_RGB | WS2811_800kHz;
 OctoWS2811 leds(ledsPerStrip, displayMemory, drawingMemory, config);
 File videofile;
 
@@ -160,7 +160,7 @@ void loop()
 
   if (playing) {
     if (sd_card_read(header, 5)) {
-      // Serial.printf("my header: %u %u %u %u %u\n", header[0], header[1], header[2], header[3], header[4]);
+      // Serial.printf("my header: %u %u %u %u %u\n", header[0], heder[1], header[2], header[3], header[4]);
       // Serial.printf("my header: %02X %02X %02X %02X %02X\n", header[0], header[1], header[2], header[3], header[4]);
       if (header[0] == '*') {
         // found an image frame
